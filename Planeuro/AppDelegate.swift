@@ -13,13 +13,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Создание экземпляра Presenter
+        // Создание экземпляра Presenter и Interactor для экрана входа
         let presenter = LoginPresenter()
-
-        // Создание экземпляра Interactor, передача Presenter
         let interactor = LoginInteractor(presenter: presenter)
-
-        // Создание экземпляра ViewController, передача Interactor
         let viewController = LoginViewController(interactor: interactor)
 
         // Инициализация окна и установка главного экрана

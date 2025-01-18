@@ -2,48 +2,45 @@
 //  RegistrationViewController.swift
 //  Planeuro
 //
-//  Created by Эльвира Матвеенко on 16.01.2025.
+//  Created by Эльвира Матвеенко on 18.01.2025.
 //
 
 import UIKit
 
-final class LoginViewController: UIViewController {
-    private let interactor: LoginInteractorProtocol
-    
+final class RegistrationViewController: UIViewController {
+    private let interactor: RegistrationInteractorProtocol
+
     // MARK: - Константы
     private enum Constants {
         // Градиент
-        static let gradientLocations: [NSNumber] = [0.0, 0.27, 0.73, 1.0]
-        static let gradientStartPoint = CGPoint(x: 0.5, y: 1.0)
-        static let gradientEndPoint = CGPoint(x: 0.5, y: 0.0)
+        static let gradientLayerLocations: [NSNumber] = [0.0, 0.27, 0.73, 1.0]
+        static let gradientLayerStartPoint = CGPoint(x: 0.5, y: 1.0)
+        static let gradientLayerEndPoint = CGPoint(x: 0.5, y: 0.0)
         
         // Отступы и размеры
-        static let stackViewHorizontalPadding: CGFloat = 20
-        static let combinedRegisterButtonBottomPadding: CGFloat = 30
-        static let stackViewSpacing: CGFloat = 16
-        static let titleFontSize: CGFloat = 45
-        static let descriptionFontSize: CGFloat = 26
-        static let loginButtonFontSize: CGFloat = 20
-        static let forgotPasswordButtonFontSize: CGFloat = 17
-        static let combinedRegisterButtonHeight: CGFloat = 55
-        static let combinedRegisterButtonWidth: CGFloat = 260
-        static let loginButtonHeight: CGFloat = 50
-        static let loginButtonWidth: CGFloat = 260
+        static let stackViewHorizontalPadding: CGFloat = 20.0
+        static let combinedRegisterButtonBottomPadding: CGFloat = 30.0
+        static let stackViewSpacing: CGFloat = 16.0
+        static let titleLabelFontSize: CGFloat = 45.0
+        static let registerButtonFontSize: CGFloat = 20.0
+        static let combinedButtonFontSize: CGFloat = 17.0
+        static let combinedButtonHeight: CGFloat = 55.0
+        static let registerButtonWidth: CGFloat = 260.0
+        static let registerButtonHeight: CGFloat = 50.0
         static let buttonCornerRadius: CGFloat = 20.0
         
         // Тень
         static let shadowOpacity: Float = 0.25
-        static let shadowRadius: CGFloat = 4
-        static let shadowOffset = CGSize(width: 0, height: 4)
+        static let shadowRadius: CGFloat = 4.0
+        static let shadowOffsetHeight: CGFloat = 4.0
         
-        // Интервал между строками
-        static let lineSpacing: CGFloat = 8
-        
-        // Количество слов для переноса строки
-        static let wordsPerLine: Int = 2
+        // Межстрочный интервал для текста в комбинированной кнопке
+        static let lineSpacing: CGFloat = 8.0
     }
 
-    init(interactor: LoginInteractorProtocol) {
+    // MARK: - Инициализация
+
+    init(interactor: RegistrationInteractorProtocol) {
         self.interactor = interactor
         super.init(nibName: nil, bundle: nil)
     }
@@ -51,6 +48,8 @@ final class LoginViewController: UIViewController {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+
+    // MARK: - Жизненный цикл
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -68,9 +67,9 @@ final class LoginViewController: UIViewController {
             UIColor.white.cgColor,
             UIColor.color600.cgColor
         ]
-        gradientLayer.locations = Constants.gradientLocations
-        gradientLayer.startPoint = Constants.gradientStartPoint
-        gradientLayer.endPoint = Constants.gradientEndPoint
+        gradientLayer.locations = Constants.gradientLayerLocations
+        gradientLayer.startPoint = Constants.gradientLayerStartPoint
+        gradientLayer.endPoint = Constants.gradientLayerEndPoint
         gradientLayer.frame = view.bounds
 
         // Добавляем градиентный слой на view
@@ -88,10 +87,8 @@ final class LoginViewController: UIViewController {
         // Добавляем комбинированную кнопку
         let combinedRegisterButton = createCombinedRegisterButton()
         view.addSubview(combinedRegisterButton)
-        combinedRegisterButton
-            .pinBottom(to: view, Constants.combinedRegisterButtonBottomPadding)
-        combinedRegisterButton
-            .pinCenterX(to: view)
+        combinedRegisterButton.pinBottom(to: view, Constants.combinedRegisterButtonBottomPadding)
+        combinedRegisterButton.pinCenterX(to: view)
         
         // Убираем кнопку Back из навигации
         self.navigationItem.hidesBackButton = true
@@ -105,15 +102,15 @@ final class LoginViewController: UIViewController {
 
     private func createStackView() -> UIStackView {
         let titleLabel = createTitleLabel()
-        let descriptionLabel = createDescriptionLabel()
+        let nameField = createInputField(placeholder: "Введите имя")
         let emailField = createInputField(placeholder: "Введите e-mail")
         let passwordField = createInputField(placeholder: "Введите пароль", isSecure: true)
-        let forgotPasswordButton = createForgotPasswordButton()
-        let loginButton = createLoginButton()
+        let confirmPasswordField = createInputField(placeholder: "Повторите пароль", isSecure: true)
+        let registerButton = createRegisterButton()
 
         let stackView = UIStackView(arrangedSubviews: [
-            titleLabel, descriptionLabel, emailField, passwordField,
-            loginButton, forgotPasswordButton
+            titleLabel, nameField, emailField, passwordField, confirmPasswordField,
+            registerButton
         ])
         stackView.axis = .vertical
         stackView.alignment = .center
@@ -124,46 +121,20 @@ final class LoginViewController: UIViewController {
     private func createTitleLabel() -> UILabel {
         let label = UILabel()
         label.text = "Planeuro"
-        label.font = UIFont(name: "Nunito-Black", size: Constants.titleFontSize)
+        label.font = UIFont(name: "Nunito-Black", size: Constants.titleLabelFontSize)
         label.textColor = .color800
         label.textAlignment = .center
         return label
-    }
-
-    private func createDescriptionLabel() -> UILabel {
-        let label = UILabel()
-        label.text = formatDescriptionText("Для использования этого приложения необходим аккаунт")
-        label.font = UIFont(name: "Nunito-ExtraBold", size: Constants.descriptionFontSize)
-        label.textColor = .color800
-        label.textAlignment = .center
-        label.numberOfLines = 0
-        return label
-    }
-
-    private func formatDescriptionText(_ text: String) -> String {
-        let words = text.split(separator: " ")
-        var formattedText = ""
-        
-        for (index, word) in words.enumerated() {
-            formattedText += word + " "
-            
-            // Добавляем перенос строки после каждых 2 слов
-            if (index + 1) % Constants.wordsPerLine == 0 {
-                formattedText += "\n"
-            }
-        }
-        
-        return formattedText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func createInputField(placeholder: String, isSecure: Bool = false) -> InputField {
         return InputField(placeholder: placeholder, isSecure: isSecure)
     }
 
-    private func createLoginButton() -> UIButton {
+    private func createRegisterButton() -> UIButton {
         let button = UIButton()
-        button.setTitle("Войти", for: .normal)
-        button.titleLabel?.font = UIFont(name: "Nunito-ExtraBold", size: Constants.loginButtonFontSize)
+        button.setTitle("Зарегистрироваться", for: .normal)
+        button.titleLabel?.font = UIFont(name: "Nunito-ExtraBold", size: Constants.registerButtonFontSize)
         button.setTitleColor(.white, for: .normal)
         button.layer.cornerRadius = Constants.buttonCornerRadius
         button.clipsToBounds = true // Обрезаем градиент по углам кнопки
@@ -176,7 +147,7 @@ final class LoginViewController: UIViewController {
         ]
         gradientLayer.startPoint = CGPoint(x: 0.5, y: 0.0) // Начало сверху
         gradientLayer.endPoint = CGPoint(x: 0.5, y: 1.0)   // Конец снизу
-        gradientLayer.frame = CGRect(x: 0, y: 0, width: Constants.loginButtonWidth, height: Constants.loginButtonHeight)
+        gradientLayer.frame = CGRect(x: 0, y: 0, width: Constants.registerButtonWidth, height: Constants.registerButtonHeight)
 
         // Добавляем градиент в слой кнопки
         button.layer.insertSublayer(gradientLayer, at: 0)
@@ -184,28 +155,20 @@ final class LoginViewController: UIViewController {
         // Добавляем тень
         button.layer.shadowColor = UIColor.black.cgColor
         button.layer.shadowOpacity = Constants.shadowOpacity
-        button.layer.shadowOffset = Constants.shadowOffset
+        button.layer.shadowOffset = CGSize(width: 0, height: Constants.shadowOffsetHeight)
         button.layer.shadowRadius = Constants.shadowRadius
 
         // Устанавливаем размеры кнопки
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setWidth(Constants.loginButtonWidth)
-        button.setHeight(Constants.loginButtonHeight)
+        button.setWidth(Constants.registerButtonWidth)
+        button.setHeight(Constants.registerButtonHeight)
 
-        return button
-    }
-
-    private func createForgotPasswordButton() -> UIButton {
-        let button = UIButton()
-        button.setTitle("Забыли пароль?", for: .normal)
-        button.setTitleColor(.color500, for: .normal)
-        button.titleLabel?.font = UIFont(name: "NunitoSans-Regular", size: Constants.forgotPasswordButtonFontSize)
         return button
     }
 
     private func createCombinedRegisterButton() -> UIButton {
         let button = UIButton()
-        let fullText = "Ещё нет аккаунта?\nЗарегистрироваться"
+        let fullText = "Уже есть аккаунт?\nВойти"
         let attributedString = NSMutableAttributedString(string: fullText)
         
         // Настройка стилей текста
@@ -216,9 +179,9 @@ final class LoginViewController: UIViewController {
         // Настройка стиля для всего текста
         let font = UIFont(
             name: "NunitoSans-Regular",
-            size: Constants.forgotPasswordButtonFontSize
+            size: Constants.combinedButtonFontSize
         ) ?? UIFont.systemFont(
-            ofSize: Constants.forgotPasswordButtonFontSize
+            ofSize: Constants.combinedButtonFontSize
         )
         attributedString.addAttribute(
             .font,
@@ -233,15 +196,14 @@ final class LoginViewController: UIViewController {
         attributedString.addAttribute(
             .foregroundColor,
             value: UIColor.color200,
-            range: NSRange(location: 0, length: "Ещё нет аккаунта?".count)
+            range: NSRange(location: 0,length: "Уже есть аккаунт?".count)
         )
         
-        // Настройка стиля для "Зарегистрироваться"
-        if let range = fullText.range(of: "Зарегистрироваться") {
+        // Настройка стиля для "Войти"
+        if let range = fullText.range(of: "Войти") {
             let nsRange = NSRange(range, in: fullText)
             attributedString.addAttribute(.foregroundColor, value: UIColor.color100, range: nsRange)
-            attributedString.addAttribute(.font,value: UIFont(name: "NunitoSans-Bold",size: Constants.forgotPasswordButtonFontSize) ?? UIFont.boldSystemFont(ofSize: Constants.forgotPasswordButtonFontSize),range: nsRange
-            )
+            attributedString.addAttribute(.font, value: UIFont(name: "NunitoSans-Bold", size: Constants.combinedButtonFontSize) ?? UIFont.boldSystemFont(ofSize: Constants.combinedButtonFontSize), range: nsRange)
         }
         
         // Устанавливаем атрибутированный текст для кнопки
@@ -252,22 +214,19 @@ final class LoginViewController: UIViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         
         // Устанавливаем размеры кнопки
-        button.setWidth(Constants.combinedRegisterButtonWidth)
-        button.setHeight(Constants.combinedRegisterButtonHeight)
-
+        button.setWidth(Constants.registerButtonWidth)
+        button.setHeight(Constants.combinedButtonHeight)
+        
         // Обработчик нажатия на кнопку
         button.addTarget(self, action: #selector(didTapRegisterButton), for: .touchUpInside)
-        
+            
         return button
     }
 
+    // MARK: - Действия
+
     @objc private func didTapRegisterButton() {
-        // Переход на экран RegistrationViewController
-        let registrationPresenter = RegistrationPresenter()
-        let registrationInteractor = RegistrationInteractor(presenter: registrationPresenter)
-        let registrationViewController = RegistrationViewController(interactor: registrationInteractor)
-        
-        // Переход через навигацию
-        navigationController?.pushViewController(registrationViewController, animated: true)
+        // Возврат на предыдущий экран
+        navigationController?.popViewController(animated: true)
     }
 }
