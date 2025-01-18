@@ -16,7 +16,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         
         window = UIWindow(windowScene: windowScene)
         window?.windowScene = windowScene
+        
+        let presenter = LoginPresenter()
+        let interactor = LoginInteractor(presenter: presenter)
+        let registrationViewController = LoginViewController(interactor: interactor)
+        
+        window?.rootViewController = registrationViewController
         window?.makeKeyAndVisible()
-        window?.rootViewController = ViewController()
     }
+
 }
