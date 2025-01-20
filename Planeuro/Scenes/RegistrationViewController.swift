@@ -11,6 +11,7 @@ final class RegistrationViewController: UIViewController {
     private let interactor: RegistrationInteractorProtocol
 
     // MARK: - Константы
+    
     private enum Constants {
         // Градиент
         static let gradientLayerLocations: [NSNumber] = [0.0, 0.27, 0.73, 1.0]

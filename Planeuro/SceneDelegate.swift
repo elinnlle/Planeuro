@@ -17,17 +17,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(windowScene: windowScene)
         window?.windowScene = windowScene
         
-        // Создание экземпляра Presenter и Interactor для экрана входа
-        let presenter = LoginPresenter()
-        let interactor = LoginInteractor(presenter: presenter)
-        let loginViewController = LoginViewController(interactor: interactor)
-        
-        // Встраиваем экран входа в NavigationController
-        let navigationController = UINavigationController(rootViewController: loginViewController)
-        
-        // Устанавливаем rootViewController
-        window?.rootViewController = navigationController
+        // Устанавливаем LoadingViewController как стартовый экран
+        let loadingViewController = LoadingViewController()
+        window?.rootViewController = loadingViewController
         window?.makeKeyAndVisible()
     }
 }
+
 

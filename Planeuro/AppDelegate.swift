@@ -12,17 +12,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Создание экземпляра Presenter и Interactor для экрана входа
-        let presenter = LoginPresenter()
-        let interactor = LoginInteractor(presenter: presenter)
-        let viewController = LoginViewController(interactor: interactor)
-
-        // Инициализация окна и установка главного экрана
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        // Инициализация окна
         window = UIWindow(frame: UIScreen.main.bounds)
-        window?.rootViewController = viewController
+        
+        // Устанавливаем LoadingViewController как начальный экран
+        let loadingViewController = LoadingViewController()
+        window?.rootViewController = loadingViewController
         window?.makeKeyAndVisible()
-
+        
         return true
     }
 }
+

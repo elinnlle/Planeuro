@@ -11,6 +11,7 @@ final class LoginViewController: UIViewController {
     private let interactor: LoginInteractorProtocol
     
     // MARK: - Константы
+    
     private enum Constants {
         // Градиент
         static let gradientLocations: [NSNumber] = [0.0, 0.27, 0.73, 1.0]
