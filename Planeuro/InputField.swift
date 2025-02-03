@@ -15,6 +15,8 @@ final class InputField: UIView {
     private let placeholder: String
     private let isSecure: Bool
     private var showPasswordButton: UIButton?
+    private let textColor: UIColor = .black
+    private let placeholderColor: UIColor = .color200
 
     // MARK: - Константы
     
@@ -49,6 +51,13 @@ final class InputField: UIView {
         textField.placeholder = placeholder
         textField.isSecureTextEntry = isSecure
         textField.font = UIFont(name: "Nunito-Regular", size: Constants.fontSize)
+        textField.textColor = textColor // Устанавливаем цвет текста
+
+        // Устанавливаем цвет подсказки
+        let attributes: [NSAttributedString.Key: Any] = [
+            .foregroundColor: placeholderColor
+        ]
+        textField.attributedPlaceholder = NSAttributedString(string: placeholder, attributes: attributes)
 
         addSubview(textField)
         textField.translatesAutoresizingMaskIntoConstraints = false

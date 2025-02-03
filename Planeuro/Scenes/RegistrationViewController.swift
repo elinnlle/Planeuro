@@ -55,6 +55,7 @@ final class RegistrationViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        setupTapGesture()
     }
 
     // MARK: - Настройка интерфейса
@@ -97,6 +98,15 @@ final class RegistrationViewController: UIViewController {
         // Обновляем layout, чтобы все элементы отобразились корректно
         view.setNeedsLayout()
         view.layoutIfNeeded()
+    }
+    
+    private func setupTapGesture() {
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        view.addGestureRecognizer(tapGesture)
+    }
+    
+    @objc private func dismissKeyboard() {
+        view.endEditing(true) // Скрывает клавиатуру
     }
 
     // MARK: - Создание UI элементов
