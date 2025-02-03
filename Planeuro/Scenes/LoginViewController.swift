@@ -200,7 +200,7 @@ final class LoginViewController: UIViewController {
         let button = UIButton()
         button.setTitle("Забыли пароль?", for: .normal)
         button.setTitleColor(.color500, for: .normal)
-        button.titleLabel?.font = UIFont(name: "NunitoSans-Regular", size: Constants.forgotPasswordButtonFontSize)
+        button.titleLabel?.font = UIFont(name: "Nunito-Regular", size: Constants.forgotPasswordButtonFontSize)
         return button
     }
 
@@ -216,7 +216,7 @@ final class LoginViewController: UIViewController {
         
         // Настройка стиля для всего текста
         let font = UIFont(
-            name: "NunitoSans-Regular",
+            name: "Nunito-Regular",
             size: Constants.forgotPasswordButtonFontSize
         ) ?? UIFont.systemFont(
             ofSize: Constants.forgotPasswordButtonFontSize

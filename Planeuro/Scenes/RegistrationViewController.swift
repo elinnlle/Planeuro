@@ -179,7 +179,7 @@ final class RegistrationViewController: UIViewController {
         
         // Настройка стиля для всего текста
         let font = UIFont(
-            name: "NunitoSans-Regular",
+            name: "Nunito-Regular",
             size: Constants.combinedButtonFontSize
         ) ?? UIFont.systemFont(
             ofSize: Constants.combinedButtonFontSize

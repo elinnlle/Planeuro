@@ -48,7 +48,7 @@ final class InputField: UIView {
     private func setupUI() {
         textField.placeholder = placeholder
         textField.isSecureTextEntry = isSecure
-        textField.font = UIFont(name: "NunitoSans-Regular", size: Constants.fontSize)
+        textField.font = UIFont(name: "Nunito-Regular", size: Constants.fontSize)
 
         addSubview(textField)
         textField.translatesAutoresizingMaskIntoConstraints = false

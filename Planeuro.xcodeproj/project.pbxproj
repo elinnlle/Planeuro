@@ -42,7 +42,7 @@
 			membershipExceptions = (
 				"Fonts/Nunito-Black.ttf",
 				"Fonts/Nunito-ExtraBold.ttf",
-				"Fonts/NunitoSans-Regular.ttf",
+				"Fonts/Nunito-Regular.ttf",
 			);
 			target = 24222CE42D3699240099595A /* PlaneuroTests */;
 		};
@@ -51,7 +51,7 @@
 			membershipExceptions = (
 				"Fonts/Nunito-Black.ttf",
 				"Fonts/Nunito-ExtraBold.ttf",
-				"Fonts/NunitoSans-Regular.ttf",
+				"Fonts/Nunito-Regular.ttf",
 			);
 			target = 24222CEE2D3699240099595A /* PlaneuroUITests */;
 		};

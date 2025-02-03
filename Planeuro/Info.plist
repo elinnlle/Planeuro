@@ -4,9 +4,9 @@
 <dict>
 	<key>UIAppFonts</key>
 	<array>
-		<string>NunitoSans-Regular.ttf</string>
 		<string>Nunito-ExtraBold.ttf</string>
 		<string>Nunito-Black.ttf</string>
+		<string>Nunito-Regular.ttf</string>
 	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>

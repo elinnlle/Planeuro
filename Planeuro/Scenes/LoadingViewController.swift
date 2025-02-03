@@ -48,7 +48,7 @@ class LoadingViewController: UIViewController {
         // Версия приложения
         let versionLabel = UILabel()
         versionLabel.text = "Версия 1.0.0"
-        versionLabel.font = UIFont(name: "NunitoSans-Regular", size: Constants.versionFontSize)
+        versionLabel.font = UIFont(name: "Nunito-Regular", size: Constants.versionFontSize)
         versionLabel.textColor = .black
         versionLabel.textAlignment = .center
         view.addSubview(versionLabel)
