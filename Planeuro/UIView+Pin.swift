@@ -1,3 +1,8 @@
+//
+//  UIView+Pin.swift
+//  Planeuro
+//
+
 import UIKit
 
 // MARK: - Pin methods
