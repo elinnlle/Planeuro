@@ -210,7 +210,7 @@ class MainViewController: UIViewController, UITableViewDelegate, UITableViewData
         let task = filteredTasks[indexPath.row]
         
         // Действие для завершения задачи
-        let completeAction = UIContextualAction(style: .normal, title: nil) { (action, view, completionHandler) in
+        let completeAction = UIContextualAction(style: .normal, title: "") { (action, view, completionHandler) in
             let taskIndex = self.tasks.firstIndex(where: { $0.title == task.title })!
             self.tasks[taskIndex].isActive = false
             self.filteredTasks[indexPath.row].isActive = false
@@ -222,7 +222,8 @@ class MainViewController: UIViewController, UITableViewDelegate, UITableViewData
         completeAction.image = UIImage(named: "CheckmarkIcon")
 
         // Действие для удаления задачи
-        let deleteAction = UIContextualAction(style: .destructive, title: nil) { (action, view, completionHandler) in
+        /// Так как необходимо было подвинуть иконку удаления подальше от правого края, но не было возможности настроить ширину контейнера, пришлось увеличивать её текстом, а иконку вручную накладывать на белый фон и сдвигать вниз
+        let deleteAction = UIContextualAction(style: .destructive, title: "TraashIcon") { (action, view, completionHandler) in
             let taskIndex = self.tasks.firstIndex(where: { $0.title == task.title })!
             self.tasks.remove(at: taskIndex)
             self.filteredTasks.remove(at: indexPath.row)
