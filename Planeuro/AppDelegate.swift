@@ -20,8 +20,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         window = UIWindow(frame: UIScreen.main.bounds)
         
         // Устанавливаем LoadingViewController как начальный экран
-        let loadingViewController = LoadingViewController()
-        window?.rootViewController = loadingViewController
+        let mainVC = MainViewController()
+        let navigationController = UINavigationController(rootViewController: mainVC)
+        window?.rootViewController = navigationController
         window?.makeKeyAndVisible()
         
         return true

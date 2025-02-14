@@ -18,8 +18,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.windowScene = windowScene
         
         // Устанавливаем LoadingViewController как стартовый экран
-        let loadingViewController = LoadingViewController()
-        window?.rootViewController = loadingViewController
+        let mainVC = MainViewController()
+        let navigationController = UINavigationController(rootViewController: mainVC)
+        navigationController.setNavigationBarHidden(true, animated: false)
+        window?.rootViewController = navigationController
         window?.makeKeyAndVisible()
     }
 }
