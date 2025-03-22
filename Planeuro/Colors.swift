@@ -10,7 +10,7 @@ import UIKit
 extension UIColor {
     static let white = UIColor.white
     static let color100 = UIColor(red: 238/255, green: 235/255, blue: 247/255, alpha: 1) // #EEEBF7
-    static let color200 = UIColor(red: 226/255, green: 222/255, blue: 246/255, alpha: 1) // #E2DEF6
+    static let color200 = UIColor(red: 240/255, green: 236/255, blue: 255/255, alpha: 1) // #F0ECFF
     static let color300 = UIColor(red: 202/255, green: 192/255, blue: 235/255, alpha: 1) // #CAC0EB
     static let color400 = UIColor(red: 175/255, green: 159/255, blue: 224/255, alpha: 1) // #AF9FE0
     static let color500 = UIColor(red: 149/255, green: 123/255, blue: 212/255, alpha: 1) // #957BD4

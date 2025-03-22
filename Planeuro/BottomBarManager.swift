@@ -126,6 +126,11 @@ class BottomBarManager {
             let calendarVC = CalendarViewController()
             parentVC.navigationController?.pushViewController(calendarVC, animated: false)
         }
+        // Если нажата иконка для настроек
+        else if iconName == "SettingsIcon" || iconName == "SettingsIconAdd" {
+            let calendarVC = SettingsViewController()
+            parentVC.navigationController?.pushViewController(calendarVC, animated: false)
+        }
     }
     
     // MARK: - Обработка скролла
@@ -193,6 +198,20 @@ extension MainViewController: UIScrollViewDelegate {
 }
 
 extension CalendarViewController: UIScrollViewDelegate {
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        bottomBarManager.scrollViewWillBeginDragging()
+    }
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        bottomBarManager.handleScroll(scrollView)
+    }
+
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        bottomBarManager.scrollViewDidEndDragging()
+    }
+}
+
+extension SettingsViewController: UIScrollViewDelegate {
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         bottomBarManager.scrollViewWillBeginDragging()
     }
