@@ -58,7 +58,6 @@ class MainViewController: UIViewController, UITableViewDelegate, UITableViewData
     }()
     
     private let tableView = UITableView()
-    private var previousScrollOffset: CGFloat = 0
     
     private let titleLabel: UILabel = {
         let label = UILabel()
@@ -77,14 +76,14 @@ class MainViewController: UIViewController, UITableViewDelegate, UITableViewData
         return label
     }()
 
-    private let addButton: UIButton = {
+    private lazy var addButton: UIButton = {
         let button = UIButton()
         button.backgroundColor = .white
         button.clipsToBounds = true
-
         if let plusImage = UIImage(named: "PlusIcon") {
             button.setImage(plusImage, for: .normal)
         }
+        button.addTarget(self, action: #selector(addButtonTapped), for: .touchUpInside)
         return button
     }()
 
@@ -308,6 +307,12 @@ class MainViewController: UIViewController, UITableViewDelegate, UITableViewData
         default:
             return 0
         }
+    }
+    
+    // MARK: - Добавление задач
+    @objc private func addButtonTapped() {
+        let addTaskVC = AddTaskViewController()
+        navigationController?.pushViewController(addTaskVC, animated: true)
     }
 }
 
