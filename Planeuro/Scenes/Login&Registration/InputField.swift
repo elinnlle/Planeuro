@@ -16,7 +16,7 @@ final class InputField: UIView {
     private let isSecure: Bool
     private var showPasswordButton: UIButton?
     private let textColor: UIColor = .black
-    private let placeholderColor: UIColor = .color200
+    private let placeholderColor: UIColor = .color300
 
     // MARK: - Константы
     
