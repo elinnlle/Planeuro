@@ -7,31 +7,66 @@
 
 import UIKit
 
-class CalendarViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout {
+final class CalendarViewController: UIViewController {
     
     // MARK: - Константы
     
     private enum Constants {
+        // Заголовок
         static let titleFontSize: CGFloat = 27.0
         static let titleTopOffset: CGFloat = 20.0
-        static let titleWidth: CGFloat = 245.0
         static let titleHeight: CGFloat = 30.0
         static let collectionViewLeftOffset: CGFloat = 20.0
         static let monthButtonRightOffset: CGFloat = 10.0
         
-        // Константы для дней недели
+        // Дни недели
         static let daysOfWeekStackViewTopOffset: CGFloat = 20.0
         static let daysOfWeekStackViewLeftOffset: CGFloat = 10.0
         static let daysOfWeekStackViewRightOffset: CGFloat = 10.0
         
-        // Константы для календаря
+        // Календарь
         static let calendarCollectionViewTopOffset: CGFloat = 10.0
         static let calendarCollectionViewLeftOffset: CGFloat = 10.0
         static let calendarCollectionViewRightOffset: CGFloat = 10.0
-        static let calendarCollectionViewBottomOffset: CGFloat = -20.0
+        
+        // Ползунок календаря
+        static let calendarHandleViewWidth: CGFloat = 64.0
+        static let calendarHandleViewHeight: CGFloat = 3.0
+        static let calendarHandleViewTopOffset: CGFloat = 8.0
+        
+        // DatePicker
+        static let datePickerHeight: CGFloat = 216.0
+        static let datePickerTopOffset: CGFloat = 40.0
+        static let datePickerLeftOffset: CGFloat = 20.0
+        static let datePickerRightOffset: CGFloat = 20.0
+        
+        // Константы для UICollectionView
+        static let numberOfDaysInWeek: Int = 7
+        static let daysInWeek: CGFloat = 7.0
+        
+        // Дополнительные константы
+        static let minimumInteritemSpacing: CGFloat = 0
+        static let minimumLineSpacing: CGFloat = 0
+        static let swipeThreshold: CGFloat = 30.0
+        static let animationDuration: TimeInterval = 0.3
+        static let defaultCalendarHeight: CGFloat = 300.0
+        static let labelFontSize: CGFloat = 17.0
+        static let cornerRadius: CGFloat = 2.5
+        static let previousMonthOffset: Int = -1
+        static let nextMonthOffset: Int = 1
+        static let monday: Int = 2
     }
     
-    private let titleLabel: UILabel = {
+    // MARK: - Свойства
+    
+    private var currentDate = Date()
+    private(set) var selectedDate: Date?
+    private var calendarHeightConstraint: NSLayoutConstraint?
+    private var isCalendarCollapsed = false
+    private let scheduleViewController = ScheduleViewController()
+    
+    // MARK: - UI Элементы
+    private lazy var titleLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont(name: "Nunito-ExtraBold", size: Constants.titleFontSize)
         label.textColor = .color800
@@ -39,111 +74,178 @@ class CalendarViewController: UIViewController, UICollectionViewDataSource, UICo
         return label
     }()
     
-    private let datePickerButton: UIButton = {
+    private lazy var datePickerButton: UIButton = {
         let button = UIButton()
         button.setImage(UIImage(named: "DownArrowIcon"), for: .normal)
+        button.addTarget(self, action: #selector(showDatePicker), for: .touchUpInside)
         return button
     }()
     
-    private let prevMonthButton: UIButton = {
+    private lazy var prevMonthButton: UIButton = {
         let button = UIButton()
         button.setImage(UIImage(named: "LeftArrowIcon"), for: .normal)
+        button.addTarget(self, action: #selector(prevMonth), for: .touchUpInside)
         return button
     }()
     
-    private let nextMonthButton: UIButton = {
+    private lazy var nextMonthButton: UIButton = {
         let button = UIButton()
         button.setImage(UIImage(named: "RightArrowIcon"), for: .normal)
+        button.addTarget(self, action: #selector(nextMonth), for: .touchUpInside)
         return button
     }()
     
-    private let daysOfWeekStackView: UIStackView = {
+    private lazy var daysOfWeekStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.distribution = .fillEqually
         return stackView
     }()
     
-    private let calendarCollectionView: UICollectionView = {
+    private lazy var calendarCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
-        layout.minimumInteritemSpacing = 0
-        layout.minimumLineSpacing = 0
+        layout.minimumInteritemSpacing = Constants.minimumInteritemSpacing
+        layout.minimumLineSpacing = Constants.minimumLineSpacing
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.register(CalendarDayCell.self, forCellWithReuseIdentifier: "CalendarDayCell")
         collectionView.backgroundColor = .white
+        collectionView.isScrollEnabled = false
+        collectionView.dataSource = self
+        collectionView.delegate = self
         return collectionView
     }()
     
-    private var currentDate = Date()
-    private var selectedDate: Date?
+    private lazy var calendarHandleView: UIView = {
+        let view = LargeHitAreaView()
+        view.backgroundColor = .color800
+        view.layer.cornerRadius = Constants.cornerRadius
+        let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handleCalendarPanGesture(_:)))
+        view.addGestureRecognizer(panGesture)
+        return view
+    }()
+    
+    // MARK: - Жизненный цикл
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        // Устанавливаем текущий день
-        let calendar = Calendar.current
-        currentDate = calendar.startOfDay(for: Date())
-        selectedDate = currentDate
-        
+        setupCurrentDate()
         setupUI()
         updateTitle()
+        setupScheduleView()
+        
+        scheduleViewController.loadTasks(for: selectedDate ?? Date())
     }
-
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateCalendarHeight()
+    }
+}
+
+// MARK: - Настройка UI
+
+extension CalendarViewController {
     private func setupUI() {
         view.backgroundColor = .white
-        
-        // Title and navigation buttons
+        addSubviews()
+        setupConstraints()
+        setupDaysOfWeek()
+        addSwipeGestures()
+    }
+    
+    private func addSubviews() {
         view.addSubview(titleLabel)
         view.addSubview(datePickerButton)
         view.addSubview(prevMonthButton)
         view.addSubview(nextMonthButton)
+        view.addSubview(daysOfWeekStackView)
+        view.addSubview(calendarCollectionView)
+        view.addSubview(calendarHandleView)
+    }
+    
+    private func setupScheduleView() {
+        addChild(scheduleViewController)
+        view.addSubview(scheduleViewController.view)
+        scheduleViewController.view.translatesAutoresizingMaskIntoConstraints = false
         
+        NSLayoutConstraint.activate([
+            scheduleViewController.view.topAnchor.constraint(equalTo: calendarHandleView.bottomAnchor, constant: 10),
+            scheduleViewController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scheduleViewController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scheduleViewController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        
+        scheduleViewController.didMove(toParent: self)
+    }
+    
+    private func setupConstraints() {
         // Настройка заголовка
         titleLabel.pinTop(to: view.safeAreaLayoutGuide.topAnchor, Constants.titleTopOffset)
         titleLabel.pinLeft(to: view, Constants.collectionViewLeftOffset)
         titleLabel.setHeight(mode: .equal, Constants.titleHeight)
-        
-        // Закрепляем стрелку выбора даты у края заголовка
+
+        // Настройка стрелки выбора даты
         datePickerButton.pinCenterY(to: titleLabel.centerYAnchor)
-        datePickerButton.pinLeft(to: titleLabel.trailingAnchor, 10)
-        
+        datePickerButton.pinLeft(to: titleLabel.trailingAnchor, Constants.monthButtonRightOffset)
+
         // Настройка кнопок переключения месяцев
         prevMonthButton.pinCenterY(to: titleLabel.centerYAnchor)
         prevMonthButton.pinRight(to: nextMonthButton.leadingAnchor, Constants.monthButtonRightOffset)
-        
         nextMonthButton.pinCenterY(to: titleLabel.centerYAnchor)
         nextMonthButton.pinRight(to: view.trailingAnchor, Constants.monthButtonRightOffset)
-        
-        // Добавляем действия для кнопок
-        datePickerButton.addTarget(self, action: #selector(showDatePicker), for: .touchUpInside)
-        prevMonthButton.addTarget(self, action: #selector(prevMonth), for: .touchUpInside)
-        nextMonthButton.addTarget(self, action: #selector(nextMonth), for: .touchUpInside)
-        
-        // Дни недели
-        let daysOfWeek = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
-        for day in daysOfWeek {
-            let label = UILabel()
-            label.text = day
-            label.font = UIFont(name: "NunitoSans-Regular", size: 17)
-            label.textColor = .color800
-            label.textAlignment = .center
-            daysOfWeekStackView.addArrangedSubview(label)
-        }
-        
+
         // Настройка дней недели
-        view.addSubview(daysOfWeekStackView)
         daysOfWeekStackView.pinTop(to: titleLabel.bottomAnchor, Constants.daysOfWeekStackViewTopOffset)
         daysOfWeekStackView.pinLeft(to: view.leadingAnchor, Constants.daysOfWeekStackViewLeftOffset)
         daysOfWeekStackView.pinRight(to: view.trailingAnchor, Constants.daysOfWeekStackViewRightOffset)
 
         // Настройка календаря
-        calendarCollectionView.dataSource = self
-        calendarCollectionView.delegate = self
-        view.addSubview(calendarCollectionView)
         calendarCollectionView.pinTop(to: daysOfWeekStackView.bottomAnchor, Constants.calendarCollectionViewTopOffset)
         calendarCollectionView.pinLeft(to: view.leadingAnchor, Constants.calendarCollectionViewLeftOffset)
         calendarCollectionView.pinRight(to: view.trailingAnchor, Constants.calendarCollectionViewRightOffset)
-        calendarCollectionView.pinBottom(to: view.bottomAnchor, Constants.calendarCollectionViewBottomOffset)
+
+        calendarHeightConstraint = calendarCollectionView.heightAnchor
+            .constraint(
+                equalToConstant: Constants.defaultCalendarHeight
+            )
+        calendarHeightConstraint?.isActive = true
+
+        calendarHandleView.pinTop(to: calendarCollectionView.bottomAnchor, Constants.calendarHandleViewTopOffset)
+        calendarHandleView.pinCenterX(to: view.centerXAnchor)
+        calendarHandleView.setWidth(mode: .equal, Constants.calendarHandleViewWidth)
+        calendarHandleView.setHeight(mode: .equal, Constants.calendarHandleViewHeight)
+    }
+    
+    private func setupDaysOfWeek() {
+        let daysOfWeek = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+        daysOfWeek.forEach { day in
+            let label = UILabel()
+            label.text = day
+            label.font = UIFont(name: "NunitoSans-Regular", size: Constants.labelFontSize)
+            label.textColor = .color800
+            label.textAlignment = .center
+            daysOfWeekStackView.addArrangedSubview(label)
+        }
+    }
+    
+    // Добавляем свайп-жесты для смены месяцев
+    private func addSwipeGestures() {
+        let swipeLeft = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
+        swipeLeft.direction = .left
+        calendarCollectionView.addGestureRecognizer(swipeLeft)
+        
+        let swipeRight = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
+        swipeRight.direction = .right
+        calendarCollectionView.addGestureRecognizer(swipeRight)
+    }
+}
+
+// MARK: - Логика календаря
+
+extension CalendarViewController {
+    private func setupCurrentDate() {
+        let calendar = Calendar.current
+        currentDate = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
+        selectedDate = Date()
     }
     
     private func updateTitle() {
@@ -160,13 +262,57 @@ class CalendarViewController: UIViewController, UICollectionViewDataSource, UICo
         let monthFormatter = DateFormatter()
         monthFormatter.locale = Locale(identifier: "ru_RU")
         monthFormatter.dateFormat = "M"
-        let monthIndex = Int(monthFormatter.string(from: currentDate))! - 1
+        let monthIndex = (Int(monthFormatter.string(from: currentDate)) ?? 1) - 1
         
-        // Получаем название месяца из массива
-        let monthString = monthNames[monthIndex]
+        titleLabel.text = "\(monthNames[monthIndex]) \(yearString)"
+    }
+    
+    private func updateCalendarHeight() {
+        let availableWidth = calendarCollectionView.bounds.width
+        let cellWidth = availableWidth / Constants.daysInWeek
+        let weeks = numberOfWeeks(for: currentDate)
+        let newHeight = isCalendarCollapsed ? cellWidth : cellWidth * CGFloat(weeks)
+        calendarHeightConstraint?.constant = newHeight
+    }
+    
+    private func numberOfWeeks(for date: Date) -> Int {
+        var calendar = Calendar.current
+        calendar.firstWeekday = Constants.monday
         
-        // Объединяем месяц и год с заглавной буквы
-        titleLabel.text = "\(monthString) \(yearString)"
+        let range = calendar.range(of: .day, in: .month, for: date)!
+        let numberOfDays = range.count
+        
+        let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: date))!
+        let weekdayOfFirstDay = calendar.component(.weekday, from: firstDayOfMonth)
+        let dayOffset = (
+            weekdayOfFirstDay - calendar.firstWeekday + Constants.numberOfDaysInWeek
+        ) % Constants.numberOfDaysInWeek
+        
+        let totalCells = numberOfDays + dayOffset
+        return Int(ceil(Double(totalCells) / Constants.daysInWeek))
+    }
+}
+
+// MARK: - Обработка жестов и действий
+
+extension CalendarViewController {
+    @objc private func handleSwipe(_ gesture: UISwipeGestureRecognizer) {
+        if gesture.direction == .left {
+            nextMonth()
+        } else if gesture.direction == .right {
+            prevMonth()
+        }
+    }
+    
+    @objc private func handleCalendarPanGesture(_ gesture: UIPanGestureRecognizer) {
+        if gesture.state == .ended {
+            let translation = gesture.translation(in: view)
+            if translation.y < -1 * Constants.swipeThreshold && !isCalendarCollapsed {
+                collapseCalendar()
+            } else if translation.y > Constants.swipeThreshold && isCalendarCollapsed {
+                expandCalendar()
+            }
+        }
     }
     
     @objc private func showDatePicker() {
@@ -175,25 +321,35 @@ class CalendarViewController: UIViewController, UICollectionViewDataSource, UICo
         datePicker.preferredDatePickerStyle = .wheels
         datePicker.locale = Locale(identifier: "ru_RU")
         
-        let alert = UIAlertController(title: "Выберите дату", message: "\n\n\n\n\n\n\n\n\n", preferredStyle: .actionSheet)
-        
+        let alert = UIAlertController(title: "Выберите дату",
+                                      message: "\n\n\n\n\n\n\n\n\n\n\n",
+                                      preferredStyle: .actionSheet)
         alert.view.addSubview(datePicker)
         
-        datePicker.pinTop(to: alert.view.topAnchor, 40)
-        datePicker.pinLeft(to: alert.view.leadingAnchor, 20)
-        datePicker.pinRight(to: alert.view.leadingAnchor, 20)
-        datePicker.setHeight(mode: .equal, 160)
+        datePicker.pinTop(to: alert.view.topAnchor, Constants.datePickerTopOffset)
+        datePicker.pinLeft(to: alert.view.leadingAnchor, Constants.datePickerLeftOffset)
+        datePicker.pinRight(to: alert.view.trailingAnchor, Constants.datePickerRightOffset)
+        datePicker.setHeight(mode: .equal, Constants.datePickerHeight)
         
         let selectAction = UIAlertAction(title: "Выбрать", style: .default) { [weak self] _ in
             guard let self = self else { return }
-            self.currentDate = datePicker.date
-            self.selectedDate = datePicker.date // Устанавливаем выбранную дату
+            if let normalizedDate = Calendar.current.date(
+                from: Calendar.current.dateComponents([.year, .month], from: datePicker.date)
+            ) {
+                self.currentDate = normalizedDate
+            }
+            self.selectedDate = datePicker.date
             self.updateTitle()
             self.calendarCollectionView.reloadData()
+            
+            if self.isCalendarCollapsed, let selected = self.selectedDate {
+                self.scrollToWeek(containing: selected)
+            }
+            
+            self.scheduleViewController.loadTasks(for: datePicker.date)
         }
         
         let cancelAction = UIAlertAction(title: "Отмена", style: .cancel, handler: nil)
-        
         alert.addAction(selectAction)
         alert.addAction(cancelAction)
         
@@ -201,185 +357,200 @@ class CalendarViewController: UIViewController, UICollectionViewDataSource, UICo
     }
     
     @objc private func prevMonth() {
-        currentDate = Calendar.current.date(byAdding: .month, value: -1, to: currentDate) ?? currentDate
+        currentDate = Calendar.current.date(
+            byAdding: .month,
+            value: Constants.previousMonthOffset,
+            to: currentDate
+        ) ?? currentDate
         updateTitle()
         calendarCollectionView.reloadData()
     }
     
     @objc private func nextMonth() {
-        currentDate = Calendar.current.date(byAdding: .month, value: 1, to: currentDate) ?? currentDate
+        currentDate = Calendar.current.date(
+            byAdding: .month,
+            value: Constants.nextMonthOffset,
+            to: currentDate
+        ) ?? currentDate
         updateTitle()
         calendarCollectionView.reloadData()
     }
     
-    // MARK: - UICollectionViewDataSource
-
-    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+    private func collapseCalendar() {
+        guard !isCalendarCollapsed else { return }
+        isCalendarCollapsed = true
+        updateCalendarHeight()
+        
+        if let selected = selectedDate {
+            scrollToWeek(containing: selected)
+        }
+        
+        UIView.animate(withDuration: Constants.animationDuration) {
+            self.view.layoutIfNeeded()
+        }
+    }
+    
+    private func expandCalendar() {
+        guard isCalendarCollapsed else { return }
+        isCalendarCollapsed = false
+        updateCalendarHeight()
+        
+        UIView.animate(withDuration: Constants.animationDuration) {
+            self.view.layoutIfNeeded()
+        }
+    }
+    
+    private func scrollToWeek(containing date: Date) {
         let calendar = Calendar.current
-        // Получаем количество дней в текущем месяце
+        guard let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: currentDate))
+        else { return }
+        
+        let weekdayOfFirstDay = calendar.component(.weekday, from: firstDayOfMonth)
+        let dayOffset = (
+            weekdayOfFirstDay - calendar.firstWeekday + Constants.numberOfDaysInWeek
+        ) % Constants.numberOfDaysInWeek
+        
+        let selectedDay = calendar.component(.day, from: date)
+        let dayIndex = dayOffset + (selectedDay - 1)
+        
+        let row = dayIndex / Constants.numberOfDaysInWeek
+        let availableWidth = calendarCollectionView.bounds.width
+        let cellHeight = availableWidth / Constants.daysInWeek
+        
+        let yOffset = CGFloat(row) * cellHeight
+        calendarCollectionView.setContentOffset(CGPoint(x: 0, y: yOffset), animated: true)
+    }
+}
+
+// MARK: - UICollectionViewDataSource
+
+extension CalendarViewController: UICollectionViewDataSource {
+    func collectionView(_ collectionView: UICollectionView,
+                        numberOfItemsInSection section: Int) -> Int {
+        var calendar = Calendar.current
+        calendar.firstWeekday = Constants.monday
+        
         let range = calendar.range(of: .day, in: .month, for: currentDate)!
         let numberOfDays = range.count
         
-        // Получаем первый день месяца
+        // Считаем dayOffset для 1-го числа текущего месяца
         let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: currentDate))!
-        
-        // Получаем день недели для первого дня месяца
         let weekdayOfFirstDay = calendar.component(.weekday, from: firstDayOfMonth)
+        let dayOffset = (
+            weekdayOfFirstDay - calendar.firstWeekday + Constants.numberOfDaysInWeek
+        ) % Constants.numberOfDaysInWeek
         
-        // Вычисляем смещение для первого дня месяца
-        let dayOffset = (weekdayOfFirstDay - calendar.firstWeekday + 7) % 7
-        
-        // Вычисляем общее количество ячеек: дни месяца + смещение
         let totalCells = numberOfDays + dayOffset
-        
-        // Округляем до ближайшего кратного 7 (количество дней в неделе)
-        let numberOfWeeks = (totalCells + 6) / 7
-        
-        // Возвращаем количество ячеек: недели * 7
-        return numberOfWeeks * 7
+        return Int(ceil(Double(totalCells) / Constants.daysInWeek)) * Constants.numberOfDaysInWeek
     }
-
-    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "CalendarDayCell", for: indexPath) as! CalendarDayCell
+    
+    func collectionView(_ collectionView: UICollectionView,
+                        cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         
-        let calendar = Calendar.current
-        let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: currentDate))!
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "CalendarDayCell",
+                                                      for: indexPath) as! CalendarDayCell
+        
+        var calendar = Calendar.current
+        calendar.firstWeekday = Constants.monday
+        
+        // Первый день текущего месяца
+        let firstDayOfMonth = calendar.date(
+            from: calendar.dateComponents([.year, .month], from: currentDate)
+        )!
+        
+        // Считаем смещение
         let weekdayOfFirstDay = calendar.component(.weekday, from: firstDayOfMonth)
-        let dayOffset = (weekdayOfFirstDay - calendar.firstWeekday + 7) % 7
+        let dayOffset = (
+            weekdayOfFirstDay - calendar.firstWeekday + Constants.numberOfDaysInWeek
+        ) % Constants.numberOfDaysInWeek
         
+        // Кол-во дней в текущем, предыдущем и следующем месяце
         let daysInCurrentMonth = calendar.range(of: .day, in: .month, for: currentDate)!.count
-        let previousMonth = calendar.date(byAdding: .month, value: -1, to: currentDate)!
-        let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentDate)!
-        let daysInPreviousMonth = calendar.range(of: .day, in: .month, for: previousMonth)!.count
-
-        var day: Int
-        var cellDate: Date
-        var isCurrentMonth = true
         
-        if indexPath.item < dayOffset {
-            // Дни из предыдущего месяца
-            day = daysInPreviousMonth - (dayOffset - indexPath.item - 1)
-            cellDate = calendar.date(bySetting: .day, value: day, of: previousMonth)!
+        let previousMonthDate = calendar.date(byAdding: .month, value: -1, to: currentDate)!
+        let nextMonthDate = calendar.date(byAdding: .month, value: 1, to: currentDate)!
+        let daysInPreviousMonth = calendar.range(of: .day, in: .month, for: previousMonthDate)!.count
+        
+        let index = indexPath.item - dayOffset
+        
+        let day: Int
+        let cellDate: Date
+        let isCurrentMonth: Bool
+        
+        if index < 0 {
+            // Предыдущий месяц
+            day = daysInPreviousMonth + index + 1
+            cellDate = calendar.date(bySetting: .day, value: day, of: previousMonthDate)!
             isCurrentMonth = false
-        } else if indexPath.item - dayOffset < daysInCurrentMonth {
-            // Дни текущего месяца
-            day = indexPath.item - dayOffset + 1
+            
+        } else if index >= 0 && index < daysInCurrentMonth {
+            // Текущий месяц
+            day = index + 1
             cellDate = calendar.date(bySetting: .day, value: day, of: currentDate)!
+            isCurrentMonth = true
+            
         } else {
-            // Дни следующего месяца
-            day = indexPath.item - dayOffset - daysInCurrentMonth + 1
-            cellDate = calendar.date(bySetting: .day, value: day, of: nextMonth)!
+            // Следующий месяц
+            day = index - daysInCurrentMonth + 1
+            cellDate = calendar.date(bySetting: .day, value: day, of: nextMonthDate)!
             isCurrentMonth = false
         }
         
         let isToday = calendar.isDateInToday(cellDate)
         let isSelected = calendar.isDate(cellDate, inSameDayAs: selectedDate ?? Date())
-
-        let textColor = isCurrentMonth ? UIColor.black : UIColor.color600
+        let textColor = isCurrentMonth ? UIColor.black : UIColor.color700
         
-        cell.configure(
-            with: day,
-            isCurrentMonth: isCurrentMonth,
-            isToday: isToday,
-            isSelected: isSelected,
-            textColor: textColor
-        )
+        cell.cellDate = cellDate
+        cell.configure(with: day,
+                       isCurrentMonth: isCurrentMonth,
+                       isToday: isToday,
+                       isSelected: isSelected,
+                       textColor: textColor)
         
         return cell
     }
+}
 
-    
-    // MARK: - UICollectionViewDelegate
-    
-    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let calendar = Calendar.current
-        let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: currentDate))!
-        let weekdayOfFirstDay = calendar.component(.weekday, from: firstDayOfMonth)
-        let dayOffset = (weekdayOfFirstDay - calendar.firstWeekday + 7) % 7
-        
-        let day = indexPath.item - dayOffset + 1
-        let daysInCurrentMonth = calendar.range(of: .day, in: .month, for: currentDate)!.count
-        let isCurrentMonth = indexPath.item >= dayOffset && day <= daysInCurrentMonth
-        
-        if isCurrentMonth {
-            // Если день принадлежит текущему месяцу, обновляем selectedDate
-            selectedDate = calendar.date(bySetting: .day, value: day, of: currentDate)
-        } else {
-            // Определяем, к какому месяцу принадлежит выбранный день
-            if day < 1 {
-                // Переход к предыдущему месяцу
-                currentDate = calendar.date(byAdding: .month, value: -1, to: currentDate)!
-                let previousMonthDays = calendar.range(of: .day, in: .month, for: currentDate)!.count
-                selectedDate = calendar.date(bySetting: .day, value: previousMonthDays + day, of: currentDate)
-            } else {
-                // Переход к следующему месяцу
-                currentDate = calendar.date(byAdding: .month, value: 1, to: currentDate)!
-                selectedDate = calendar.date(bySetting: .day, value: day - daysInCurrentMonth, of: currentDate)
-            }
-        }
-        
-        // Обновляем заголовок и перерисовываем коллекцию
-        updateTitle()
-        calendarCollectionView.reloadData()
+// MARK: - UICollectionViewDelegateFlowLayout
+
+extension CalendarViewController: UICollectionViewDelegateFlowLayout {
+    func collectionView(_ collectionView: UICollectionView,
+                        layout collectionViewLayout: UICollectionViewLayout,
+                        sizeForItemAt indexPath: IndexPath) -> CGSize {
+        let availableWidth = collectionView.bounds.width
+        let cellWidth = availableWidth / Constants.daysInWeek
+        return CGSize(width: cellWidth, height: cellWidth)
     }
 }
 
-class CalendarDayCell: UICollectionViewCell {
-    
-    // MARK: - Константы
-    
-    private enum Constants {
-        static let dayLabelFontSize: CGFloat = 17.0
-        static let todayBorderWidth: CGFloat = 1.0
-        static let cornerRadius: CGFloat = 15.0
-        static let todayTextColor: UIColor = .color500
-    }
-    
-    // MARK: - UI Элементы
-    private let dayLabel: UILabel = {
-        let label = UILabel()
-        label.font = UIFont(name: "NunitoSans-Regular", size: Constants.dayLabelFontSize)
-        label.textAlignment = .center
-        return label
-    }()
-    
-    // MARK: - Инициализаторы
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        contentView.addSubview(dayLabel)
-        dayLabel.pinCenter(to: contentView)
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
-    // MARK: - Конфигурация
-    func configure(with day: Int, isCurrentMonth: Bool, isToday: Bool, isSelected: Bool, textColor: UIColor) {
-        dayLabel.text = day == 0 ? "" : "\(day)"
-        dayLabel.textColor = textColor
+// MARK: - UICollectionViewDelegate
+
+extension CalendarViewController: UICollectionViewDelegate {
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        guard let cell = collectionView.cellForItem(at: indexPath) as? CalendarDayCell,
+              let date = cell.cellDate else { return }
         
-        // Сбрасываем стили для всех ячеек
-        contentView.backgroundColor = .white
-        contentView.layer.borderColor = nil
-        contentView.layer.borderWidth = 0
-        contentView.layer.cornerRadius = 0
-        
-        if isToday {
-            // Устанавливаем цвет текста для сегодняшней даты
-            dayLabel.textColor = .color500
-            
-            // Добавляем обводку для сегодняшней даты
-            contentView.layer.borderColor = UIColor.color500.cgColor
-            contentView.layer.borderWidth = Constants.todayBorderWidth
-            contentView.layer.cornerRadius = Constants.cornerRadius
+        // Если дата не принадлежит текущему месяцу – переходим на тот месяц, где находится эта дата
+        if !Calendar.current.isDate(date, equalTo: currentDate, toGranularity: .month) {
+            if let normalizedDate = Calendar.current.date(
+                from: Calendar.current.dateComponents([.year, .month], from: date)
+            ) {
+                currentDate = normalizedDate
+                updateTitle()
+                collectionView.reloadData()
+            }
         }
         
-        if isSelected {
-            // Стили для выбранной даты
-            contentView.backgroundColor = .color500
-            contentView.layer.cornerRadius = Constants.cornerRadius
-            dayLabel.textColor = .white
+        // Устанавливаем выбранную дату
+        selectedDate = date
+        collectionView.reloadData()
+        
+        // Если календарь свёрнут, подскроллим неделю
+        if isCalendarCollapsed {
+            scrollToWeek(containing: date)
         }
+        
+        // Обновим расписание
+        scheduleViewController.loadTasks(for: date)
     }
 }
