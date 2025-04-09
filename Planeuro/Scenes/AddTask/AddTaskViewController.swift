@@ -7,11 +7,6 @@
 
 import UIKit
 
-// Протокол, через который Presenter будет обновлять View
-protocol AddTaskView: AnyObject {
-    func displayNewMessage(_ message: Message)
-}
-
 class AddTaskViewController: UIViewController {
     
     // MARK: - Свойства
@@ -22,7 +17,7 @@ class AddTaskViewController: UIViewController {
     private let yesButton = UIButton(type: .system)
     private let noButton = UIButton(type: .system)
     private let backButton = UIButton(type: .system)
-    // Ограничения для прикрепления inputTextView к низу и его высоты
+    private let yesNoStack = UIStackView()
     private var keyboardHeightConstraint: NSLayoutConstraint?
     private var inputTextViewHeightConstraint: NSLayoutConstraint?
     private var messages: [Message] = []
@@ -43,7 +38,7 @@ class AddTaskViewController: UIViewController {
         static let stackViewBottomPadding: CGFloat = 16
         static let stackViewWidth: CGFloat = 148
         static let stackViewHeight: CGFloat = 40
-        static let buttonCornerRadius: CGFloat = 20
+        static let buttonCornerRadius: CGFloat = 18
         static let messageTextViewTextContainerInsetTop: CGFloat = 10
         static let messageTextViewTextContainerInsetLeft: CGFloat = 10
         static let messageTextViewTextContainerInsetBottom: CGFloat = 10
@@ -152,44 +147,50 @@ class AddTaskViewController: UIViewController {
         sendButton.setImage(UIImage(named: "SendIcon")?.withRenderingMode(.alwaysOriginal), for: .normal)
         sendButton.addTarget(self, action: #selector(sendButtonTapped), for: .touchUpInside)
         view.addSubview(sendButton)
-        
-        // Настройка кнопок "Да" и "Нет"
+
+        // Кнопки Да/Нет
         yesButton.setTitle("Да", for: .normal)
-        yesButton.backgroundColor = .color300
         yesButton.titleLabel?.font = UIFont(name: "Nunito-Regular", size: Constants.buttonFontSize)
         yesButton.setTitleColor(.black, for: .normal)
+        yesButton.backgroundColor = .color300
         yesButton.layer.cornerRadius = Constants.buttonCornerRadius
+        yesButton.clipsToBounds = true
         yesButton.addTarget(self, action: #selector(yesButtonTapped), for: .touchUpInside)
-        view.addSubview(yesButton)
-        
+
         noButton.setTitle("Нет", for: .normal)
-        noButton.backgroundColor = .color300
         noButton.titleLabel?.font = UIFont(name: "Nunito-Regular", size: Constants.buttonFontSize)
         noButton.setTitleColor(.black, for: .normal)
+        noButton.backgroundColor = .color300
         noButton.layer.cornerRadius = Constants.buttonCornerRadius
+        noButton.clipsToBounds = true
         noButton.addTarget(self, action: #selector(noButtonTapped), for: .touchUpInside)
-        view.addSubview(noButton)
-        
-        // Стек для кнопок "Да" и "Нет"
-        let stackView = UIStackView(arrangedSubviews: [yesButton, noButton])
-        stackView.axis = .horizontal
-        stackView.spacing = Constants.stackViewSpacing
-        stackView.distribution = .fillEqually
-        stackView.alignment = .center
-        stackView.backgroundColor = .clear
-        view.addSubview(stackView)
-        stackView.pinCenterX(to: view)
-        stackView.pinBottom(to: inputTextView.topAnchor, Constants.stackViewBottomPadding)
-        stackView.setHeight(Constants.stackViewHeight)
-        stackView.setWidth(Constants.stackViewWidth)
-        yesButton.setHeight(Constants.stackViewHeight)
-        noButton.setHeight(Constants.stackViewHeight)
+
+        yesNoStack.axis = .horizontal
+        yesNoStack.backgroundColor = .clear
+        yesNoStack.spacing = Constants.stackViewSpacing
+        yesNoStack.distribution = .fillEqually
+        yesNoStack.alignment = .center
+        yesNoStack.addArrangedSubview(yesButton)
+        yesNoStack.addArrangedSubview(noButton)
+        view.addSubview(yesNoStack)
+
+        // Констрейнты для стека
+        yesNoStack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            yesNoStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            yesNoStack.bottomAnchor.constraint(equalTo: inputTextView.topAnchor, constant: -Constants.stackViewBottomPadding),
+            yesNoStack.heightAnchor.constraint(equalToConstant: Constants.stackViewHeight),
+            yesNoStack.widthAnchor.constraint(equalToConstant: Constants.stackViewWidth)
+        ])
+
+        // Изначально скрываем
+        yesNoStack.isHidden = true
         
         // Ограничения для таблицы сообщений
         messagesTableView.pinTop(to: backgroundView.bottomAnchor)
         messagesTableView.pinLeft(to: view)
         messagesTableView.pinRight(to: view)
-        messagesTableView.pinBottom(to: stackView.topAnchor)
+        messagesTableView.pinBottom(to: yesNoStack.topAnchor)
         
         // Ограничения для поля ввода сообщений (кроме высоты)
         inputTextView.pinLeft(to: view)
@@ -199,7 +200,21 @@ class AddTaskViewController: UIViewController {
         keyboardHeightConstraint = inputTextView.pinBottom(to: view, 0)
         sendButton.pinRight(to: inputTextView.trailingAnchor, Constants.sendButtonRightPadding)
         sendButton.pinTop(to: inputTextView.topAnchor, Constants.sendButtonTopPadding)
+        
+        messagesTableView.register(MessageCell.self, forCellReuseIdentifier: "MessageCell")
+                messagesTableView.dataSource = self
+                messagesTableView.delegate = self
     }
+    
+    // MARK: - AddTaskView
+        
+        func showYesNoButtons() {
+            yesNoStack.isHidden = false
+        }
+        
+        func hideYesNoButtons() {
+            yesNoStack.isHidden = true
+        }
     
     // MARK: - Действия
     @objc private func backButtonTapped() {
@@ -280,6 +295,32 @@ extension AddTaskViewController: AddTaskView {
             self.messagesTableView.scrollToRow(at: indexPath, at: .bottom, animated: true)
         }
     }
+    
+    func openEditTask(_ task: Tasks) {
+        let vc = EditTaskViewController(task: task)
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    func openSubtasksView(with json: String,
+        onAccept: @escaping (String) -> Void) {
+        let vc = SubtasksViewController(json: json)
+        vc.onAccept = onAccept
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    
+    func showLoading() {
+            let loading = Message(loading: true)
+            displayNewMessage(loading)
+        }
+
+        func hideLoading() {
+            if let idx = messages.firstIndex(where: { $0.isLoading }) {
+                messages.remove(at: idx)
+                messagesTableView.beginUpdates()
+                messagesTableView.deleteRows(at: [IndexPath(row: idx, section: 0)], with: .fade)
+                messagesTableView.endUpdates()
+            }
+        }
 }
 
 // MARK: - UITableViewDataSource & UITableViewDelegate
