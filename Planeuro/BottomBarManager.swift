@@ -21,7 +21,15 @@ struct BottomBarConfiguration {
     }
 }
 
+protocol BottomBarManagerDelegate: AnyObject {
+    func bottomBarManagerDidTapBack(_ manager: BottomBarManager)
+    func bottomBarManagerDidTapTrash(_ manager: BottomBarManager)
+    func bottomBarManagerNewSubtask(_ manager: BottomBarManager)
+    func bottomBarManagerAcceptSubtasks(_ manager: BottomBarManager)
+}
+
 class BottomBarManager {
+    weak var delegate: BottomBarManagerDelegate?
     
     // MARK: - Свойства
     
@@ -40,7 +48,7 @@ class BottomBarManager {
         static let barBottomOffset: CGFloat = -5.0
         static let buttonSize: CGFloat = 40.0
         static let buttonOffset: CGFloat = 25.0
-        static let gradientViewBottomOffset: CGFloat = -90.0
+        static let gradientViewBottomOffset: CGFloat = -100.0
         static let gradientViewHeight: CGFloat = 400.0
         static let barTransformOffsetY: CGFloat = 120.0
         static let gradientTransformOffsetY: CGFloat = 170.0
@@ -116,20 +124,44 @@ class BottomBarManager {
         guard let iconName = sender.accessibilityIdentifier,
               let parentVC = view?.parentViewController else { return }
         
+        // Если нажата иконка для возврата на предыдущую страницу
+        if iconName == "BackIcon" {
+            parentVC.navigationController?.popViewController(animated: true)
+        }
+        else if iconName == "BackEditIcon" {
+            delegate?.bottomBarManagerDidTapBack(self)
+        }
+        // Если нажата иконка для удаления
+        else if iconName == "TrashIcon" {
+            delegate?.bottomBarManagerDidTapTrash(self)
+        }
+        // Если нажата иконка для добавления подзадачи
+        else if iconName == "PlusSubtasksIcon" {
+            delegate?.bottomBarManagerNewSubtask(self)
+        }
+        // Если нажата иконка для принятия разбиения задачи
+        else if iconName == "AcceptIcon" {
+            delegate?.bottomBarManagerAcceptSubtasks(self)
+        }
         // Если нажата иконка для главного экрана
-        if iconName == "HomeIcon" || iconName == "HomeIconAdd" {
+        else if iconName == "HomeIcon" || iconName == "HomeIconAdd" {
             let mainVC = MainViewController()
             parentVC.navigationController?.pushViewController(mainVC, animated: false)
         }
-        // Если нажата иконка для календаря
-        else if iconName == "CalendarIcon" || iconName == "CalendarIconAdd" {
+        // Если нажата обычная иконка для календаря
+        else if iconName == "CalendarIconAdd" {
             let calendarVC = CalendarViewController()
             parentVC.navigationController?.pushViewController(calendarVC, animated: false)
         }
+        // Если нажата иконка для календаря с "+"
+        else if iconName == "CalendarIcon" {
+            let addTaskVC = AddTaskViewController()
+            parentVC.navigationController?.pushViewController(addTaskVC, animated: true)
+        }
         // Если нажата иконка для настроек
         else if iconName == "SettingsIcon" || iconName == "SettingsIconAdd" {
-            let calendarVC = SettingsViewController()
-            parentVC.navigationController?.pushViewController(calendarVC, animated: false)
+            let settingsVC = SettingsViewController()
+            parentVC.navigationController?.pushViewController(settingsVC, animated: false)
         }
     }
     
@@ -197,7 +229,7 @@ extension MainViewController: UIScrollViewDelegate {
     }
 }
 
-extension CalendarViewController: UIScrollViewDelegate {
+extension ScheduleViewController: UIScrollViewDelegate {
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         bottomBarManager.scrollViewWillBeginDragging()
     }
@@ -212,6 +244,76 @@ extension CalendarViewController: UIScrollViewDelegate {
 }
 
 extension SettingsViewController: UIScrollViewDelegate {
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        bottomBarManager.scrollViewWillBeginDragging()
+    }
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        bottomBarManager.handleScroll(scrollView)
+    }
+
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        bottomBarManager.scrollViewDidEndDragging()
+    }
+}
+
+extension EditTaskViewController: UIScrollViewDelegate {
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        bottomBarManager.scrollViewWillBeginDragging()
+    }
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        bottomBarManager.handleScroll(scrollView)
+    }
+
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        bottomBarManager.scrollViewDidEndDragging()
+    }
+}
+
+extension SubtasksViewController: UIScrollViewDelegate {
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        bottomBarManager.scrollViewWillBeginDragging()
+    }
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        bottomBarManager.handleScroll(scrollView)
+    }
+
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        bottomBarManager.scrollViewDidEndDragging()
+    }
+}
+
+extension AchievementsViewController: UIScrollViewDelegate {
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        bottomBarManager.scrollViewWillBeginDragging()
+    }
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        bottomBarManager.handleScroll(scrollView)
+    }
+
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        bottomBarManager.scrollViewDidEndDragging()
+    }
+}
+
+extension TasksAchievementsViewController: UIScrollViewDelegate {
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        bottomBarManager.scrollViewWillBeginDragging()
+    }
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        bottomBarManager.handleScroll(scrollView)
+    }
+
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        bottomBarManager.scrollViewDidEndDragging()
+    }
+}
+
+extension FrequentVisitorAchievementsViewController: UIScrollViewDelegate {
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         bottomBarManager.scrollViewWillBeginDragging()
     }
