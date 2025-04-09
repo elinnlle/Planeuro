@@ -1,5 +1,5 @@
 //
-//  CategoryCell.swift
+//  SatusCell.swift
 //  Planeuro
 //
 //  Created by Эльвира Матвеенко on 21.01.2025.
@@ -7,11 +7,11 @@
 
 import UIKit
 
-final class CategoryCell: UICollectionViewCell {
+final class SatusCell: UICollectionViewCell {
     // MARK: - UI Элементы
     
-    private let categoryLabel = CategoryCell.makeCategoryLabel()
-    private let customSelectedBackgroundView = CategoryCell.makeSelectedBackgroundView()
+    private let categoryLabel = SatusCell.makeCategoryLabel()
+    private let customSelectedBackgroundView = SatusCell.makeSelectedBackgroundView()
     
     // MARK: - Константы
     
@@ -57,7 +57,7 @@ final class CategoryCell: UICollectionViewCell {
 
 // MARK: - Настройка UI
 
-private extension CategoryCell {
+private extension SatusCell {
     // Создание метки для категории
     static func makeCategoryLabel() -> UILabel {
         let label = UILabel()
