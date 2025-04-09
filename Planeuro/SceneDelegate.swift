@@ -18,12 +18,20 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.windowScene = windowScene
         
         // Устанавливаем LoadingViewController как стартовый экран
-        let mainVC = MainViewController()
+        let mainVC = LoadingViewController()
         let navigationController = UINavigationController(rootViewController: mainVC)
         navigationController.setNavigationBarHidden(true, animated: false)
         window?.rootViewController = navigationController
         window?.makeKeyAndVisible()
+        window?.tintColor = UIColor.color700
+        window?.overrideUserInterfaceStyle = .light // светлая тема
+        window?.makeKeyAndVisible()
     }
+    
+    func sceneDidBecomeActive(_ scene: UIScene) {
+            // Пользователь «зашел» в приложение сегодня
+            VisitManager.shared.recordVisit()
+        }
 }
 
 
