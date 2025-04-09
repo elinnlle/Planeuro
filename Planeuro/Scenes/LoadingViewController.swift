@@ -91,7 +91,7 @@ class LoadingViewController: UIViewController {
     private func navigateToLogin() {
         let presenter = LoginPresenter()
         let interactor = LoginInteractor(presenter: presenter)
-        let loginViewController = LoginViewController(interactor: interactor)
+        let loginViewController = LoginViewController(interactor: interactor, presenter: presenter)
         let navigationController = UINavigationController(rootViewController: loginViewController)
         transitionToRootViewController(navigationController)
     }
