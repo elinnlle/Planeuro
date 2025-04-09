@@ -6,8 +6,13 @@
 //
 
 import UIKit
+import PhotosUI
+import CoreData
 
-class SettingsViewController: UIViewController, UITableViewDelegate {
+class SettingsViewController: UIViewController,
+                              UITableViewDelegate,
+                              UIImagePickerControllerDelegate,
+                              UINavigationControllerDelegate {
     
     // MARK: - Свойства
     
@@ -18,8 +23,17 @@ class SettingsViewController: UIViewController, UITableViewDelegate {
     public private(set) var bottomBarManager: BottomBarManager!
     private var scrollView: UIScrollView!
     private var contentView: UIView!
+    
+    private var profileImageView: UIImageView!
+    private var nameLabel: UILabel!
+    private var emailLabel: UILabel!
+    private var pushCheckbox: UIButton!
+    private var emailCheckbox: UIButton!
     private var wakeUpLabel: UILabel!
     private var sleepLabel: UILabel!
+    private let recommendationsSegmentedControl = UISegmentedControl(items: ["Нужны", "Не нужны"])
+    
+    private let taskInteractor = TaskInteractor()
     
     // MARK: - Константы
     
@@ -71,9 +85,26 @@ class SettingsViewController: UIViewController, UITableViewDelegate {
         presenter.view = self
         interactor = SettingsInteractor(presenter: presenter)
         
+        UserDefaults.standard.register(defaults: [
+              "pushNotificationsEnabled": false,
+              "emailNotificationsEnabled": false
+        ])
+            // 2) Устанавливаем состояние чекбоксов
+        pushCheckbox.isSelected  = UserDefaults.standard.bool(forKey: "pushNotificationsEnabled")
+        emailCheckbox.isSelected = UserDefaults.standard.bool(forKey: "emailNotificationsEnabled")
+        
         // Отобразить время по умолчанию
         presenter.presentWakeUpTime(date: interactor.wakeUpTime)
         presenter.presentSleepTime(date: interactor.sleepTime)
+        
+        let enabled = UserDefaults.standard.object(forKey: "recommendationsEnabled") as? Bool ?? true
+        recommendationsSegmentedControl.selectedSegmentIndex = enabled ? 0 : 1
+        
+        // загрузить сохранённую фотографию
+            if let data = UserDefaults.standard.data(forKey: "userPhoto"),
+               let image = UIImage(data: data) {
+                profileImageView.image = image
+        }
     }
     
     // MARK: - Настройка UI
@@ -85,56 +116,35 @@ class SettingsViewController: UIViewController, UITableViewDelegate {
         contentView = UIView()
         scrollView.addSubview(contentView)
         
-        let profileImageView = UIImageView(image: UIImage(systemName: "person.circle.fill"))
+        profileImageView = UIImageView(image: UIImage(systemName: "person.circle.fill"))
         profileImageView.tintColor = .color500
+        profileImageView.layer.cornerRadius = Constants.profileImageSize/2
+        profileImageView.clipsToBounds = true
         contentView.addSubview(profileImageView)
         
-        let nameLabel = UILabel()
-        nameLabel.text = "Имя пользователя"
+        nameLabel = UILabel()
         nameLabel.textColor = .color800
         nameLabel.font = UIFont(name: "Nunito-ExtraBold", size: Constants.titleFontSize)
         contentView.addSubview(nameLabel)
         
-        let emailLabel = UILabel()
-        emailLabel.text = "name@pochta.ru"
+        emailLabel = UILabel()
         emailLabel.font = UIFont(name: "Nunito-Regular", size: Constants.subtitleFontSize)
         emailLabel.textColor = .black
         contentView.addSubview(emailLabel)
         
-        // Кнопка редактирования
-        let editButton = UIButton(type: .system)
-        editButton.backgroundColor = .white
-        editButton.layer.borderColor = UIColor.color500.cgColor
-        editButton.layer.borderWidth = Constants.lineHeight
-        editButton.layer.cornerRadius = Constants.cornerRadius
-        
-        // Стек для иконки и текста
-        let editButtonStackView = UIStackView()
-        editButtonStackView.axis = .horizontal
-        editButtonStackView.alignment = .center
-        editButtonStackView.distribution = .equalSpacing
-        editButtonStackView.spacing = Constants.smallSpacing
-        
-        let editLabel = UILabel()
-        editLabel.text = "Редактировать"
-        editLabel.textColor = .black
-        editLabel.font = UIFont.systemFont(ofSize: Constants.labelFontSize)
-        editButtonStackView.addArrangedSubview(editLabel)
-        
-        let pencilIcon = UIImageView(image: UIImage(named: "PencilIcon"))
-        pencilIcon.contentMode = .scaleAspectFit
-        editButtonStackView.addArrangedSubview(pencilIcon)
-        
-        editButton.addSubview(editButtonStackView)
-        contentView.addSubview(editButton)
-        
         let line1 = createLine()
         contentView.addSubview(line1)
         
-        let statsButton = createCustomButton(title: "Посмотреть", subtitle: "Статистику")
+        let statsButton = createCustomButton(title: "Редактировать", subtitle: "Аккаунт")
+        statsButton.addTarget(self,
+                              action: #selector(editAccountTapped),
+                              for: .touchUpInside)
         contentView.addSubview(statsButton)
         
         let achievementsButton = createCustomButton(title: "Посмотреть", subtitle: "Достижения")
+        achievementsButton.addTarget(self,
+                                     action: #selector(achievementsTapped),
+                                     for: .touchUpInside)
         contentView.addSubview(achievementsButton)
         
         let line2 = createLine()
@@ -150,7 +160,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate {
         notificationsLabel.textColor = .black
         contentView.addSubview(notificationsLabel)
         
-        let pushCheckbox = createCheckbox(isChecked: false)
+        pushCheckbox = createCheckbox(
+            isChecked: UserDefaults.standard.bool(forKey: "pushNotificationsEnabled"))
         let pushLabel = UILabel()
         pushLabel.text = "Push-уведомления"
         pushLabel.font = UIFont(name: "Nunito-Regular", size: Constants.labelFontSize)
@@ -158,21 +169,14 @@ class SettingsViewController: UIViewController, UITableViewDelegate {
         contentView.addSubview(pushCheckbox)
         contentView.addSubview(pushLabel)
         
-        let emailCheckbox = createCheckbox(isChecked: false)
+        emailCheckbox = createCheckbox(
+            isChecked: UserDefaults.standard.bool(forKey: "emailNotificationsEnabled"))
         let emailLabelSwitch = UILabel()
         emailLabelSwitch.text = "Электронная почта"
         emailLabelSwitch.font = UIFont(name: "Nunito-Regular", size: Constants.labelFontSize)
         emailLabelSwitch.textColor = .black
         contentView.addSubview(emailCheckbox)
         contentView.addSubview(emailLabelSwitch)
-        
-        let recomendationCheckbox = createCheckbox(isChecked: false)
-        let recomendationLabelSwitch = UILabel()
-        recomendationLabelSwitch.text = "Уведомления с рекомендациями"
-        recomendationLabelSwitch.font = UIFont(name: "Nunito-Regular", size: Constants.labelFontSize)
-        recomendationLabelSwitch.textColor = .black
-        contentView.addSubview(recomendationCheckbox)
-        contentView.addSubview(recomendationLabelSwitch)
         
         let line3 = createLine()
         contentView.addSubview(line3)
@@ -187,7 +191,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate {
         recommendationsLabel.textColor = .black
         contentView.addSubview(recommendationsLabel)
         
-        let recommendationsSegmentedControl = UISegmentedControl(items: ["Нужны", "Не нужны"])
         recommendationsSegmentedControl.selectedSegmentIndex = 0
         recommendationsSegmentedControl.backgroundColor = .color200
         let normalAttributes: [NSAttributedString.Key: Any] = [
@@ -253,13 +256,16 @@ class SettingsViewController: UIViewController, UITableViewDelegate {
         contentView.addSubview(contactUsIcon)
         
         let contactUsLabel = UILabel()
-        contactUsLabel.text = "Связь с нами"
+        contactUsLabel.text = "Обратная связь"
         contactUsLabel.font = UIFont(name: "Nunito-Regular", size: Constants.labelFontSize)
         contactUsLabel.textColor = .black
         contentView.addSubview(contactUsLabel)
         
         let contactUsButton = UIImageView(image: UIImage(named: "RightIcon"))
         contactUsButton.contentMode = .scaleAspectFit
+        contactUsButton.isUserInteractionEnabled = true
+        let contactTap = UITapGestureRecognizer(target: self, action: #selector(contactUsTapped))
+        contactUsButton.addGestureRecognizer(contactTap)
         contentView.addSubview(contactUsButton)
         
         let line6 = createLine()
@@ -300,18 +306,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate {
         emailLabel.pinCenterX(to: contentView)
         emailLabel.pinTop(to: nameLabel.bottomAnchor)
         
-        editButton.pinCenterX(to: contentView)
-        editButton.pinTop(to: emailLabel.bottomAnchor, Constants.spacing)
-        editButton.setWidth(Constants.editButtonWidth)
-        editButton.setHeight(Constants.editButtonHeight)
-        
-        editButtonStackView.pinCenter(to: editButton)
-        editButtonStackView.pinLeft(to: editButton.leadingAnchor, Constants.spacing, .grOE)
-        editButtonStackView.pinRight(to: editButton.trailingAnchor, Constants.spacing, .lsOE)
-        
         line1.pinLeft(to: contentView.leadingAnchor, Constants.largeSpacing)
         line1.pinRight(to: contentView.trailingAnchor, Constants.largeSpacing)
-        line1.pinTop(to: editButton.bottomAnchor, Constants.largeSpacing)
+        line1.pinTop(to: emailLabel.bottomAnchor, Constants.largeSpacing)
         
         statsButton.pinLeft(to: contentView.leadingAnchor, Constants.largeSpacing)
         statsButton.pinTop(to: line1.bottomAnchor, Constants.largeSpacing)
@@ -347,15 +344,9 @@ class SettingsViewController: UIViewController, UITableViewDelegate {
         emailLabelSwitch.pinLeft(to: emailCheckbox.trailingAnchor, Constants.spacing)
         emailLabelSwitch.pinCenterY(to: emailCheckbox)
         
-        recomendationCheckbox.pinLeft(to: contentView.leadingAnchor, Constants.largeSpacing)
-        recomendationCheckbox.pinTop(to: emailCheckbox.bottomAnchor, Constants.spacing)
-        
-        recomendationLabelSwitch.pinLeft(to: recomendationCheckbox.trailingAnchor, Constants.spacing)
-        recomendationLabelSwitch.pinCenterY(to: recomendationCheckbox)
-        
         line3.pinLeft(to: contentView.leadingAnchor, Constants.largeSpacing)
         line3.pinRight(to: contentView.trailingAnchor, Constants.largeSpacing)
-        line3.pinTop(to: recomendationLabelSwitch.bottomAnchor, Constants.largeSpacing)
+        line3.pinTop(to: emailLabelSwitch.bottomAnchor, Constants.largeSpacing)
         
         recommendationsIcon.pinLeft(to: contentView.leadingAnchor, Constants.largeSpacing)
         recommendationsIcon.pinTop(to: line3.bottomAnchor, Constants.largeSpacing)
@@ -418,6 +409,183 @@ class SettingsViewController: UIViewController, UITableViewDelegate {
         footerLabel.pinBottom(to: contentView.bottomAnchor, Constants.largeSpacing)
     }
     
+    // MARK: — Actions
+
+    @objc private func editAccountTapped() {
+        let sheet = UIAlertController(
+            title: "Редактирование аккаунта",
+            message: nil,
+            preferredStyle: .actionSheet
+        )
+        
+        sheet.view.tintColor = .color700
+
+        sheet.addAction(.init(title: "Изменить фото", style: .default) { [weak self] _ in
+            self?.presentPhotoPicker()
+        })
+
+        sheet.addAction(.init(title: "Изменить имя", style: .default) { [weak self] _ in
+            self?.presentNameEditor()
+        })
+
+        sheet.addAction(.init(title: "Выйти из аккаунта", style: .default) { [weak self] _ in
+            self?.performLogout()
+        })
+
+        sheet.addAction(.init(title: "Удалить аккаунт", style: .default) { [weak self] _ in
+            self?.confirmDeleteAccount()
+        })
+
+        sheet.addAction(.init(title: "Отмена", style: .cancel))
+        present(sheet, animated: true)
+    }
+    
+    // MARK: — Photo Picker
+
+    private func presentPhotoPicker() {
+        let picker = UIImagePickerController()
+        picker.sourceType = .photoLibrary
+        picker.allowsEditing = true          // встроенный square-crop
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+
+    @objc func imagePickerController(_ picker: UIImagePickerController,
+                                didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+        picker.dismiss(animated: true)
+
+        // получаем отредактированное изображение или оригинал
+        let img = (info[.editedImage] as? UIImage)
+            ?? (info[.originalImage] as? UIImage)
+        guard let image = img else { return }
+
+        // если нужен доп. кроп в коде:
+        let square = cropToSquare(image: image)
+
+        profileImageView.image = square
+
+        // сохраняем в UserDefaults
+        if let data = square.jpegData(compressionQuality: 0.8) {
+            UserDefaults.standard.set(data, forKey: "userPhoto")
+        }
+    }
+
+    private func cropToSquare(image: UIImage) -> UIImage {
+        let original = image
+        let side = min(original.size.width, original.size.height)
+        let x = (original.size.width - side)  / 2.0
+        let y = (original.size.height - side) / 2.0
+        let cropRect = CGRect(x: x * original.scale,
+                              y: y * original.scale,
+                              width: side * original.scale,
+                              height: side * original.scale)
+        guard let cg = original.cgImage?.cropping(to: cropRect) else {
+            return original
+        }
+        return UIImage(cgImage: cg,
+                       scale: original.scale,
+                       orientation: original.imageOrientation)
+    }
+    
+    // MARK: — Edit Name
+
+    private func presentNameEditor() {
+        let alert = UIAlertController(
+            title: "Новое имя",
+            message: "Введите имя пользователя",
+            preferredStyle: .alert
+        )
+        alert.view.tintColor = .color700
+        
+        alert.addTextField { tf in
+            tf.placeholder = "Имя"
+            tf.text = self.nameLabel.text
+        }
+        alert.addAction(.init(title: "Отмена", style: .cancel))
+        alert.addAction(.init(title: "Сохранить", style: .default) { _ in
+            if let newName = alert.textFields?.first?.text, !newName.isEmpty {
+                self.nameLabel.text = newName
+                UserDefaults.standard.set(newName, forKey: "userName")
+            }
+        })
+        present(alert, animated: true)
+    }
+    
+    @objc private func achievementsTapped() {
+        let vc = AchievementsViewController()
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
+    // MARK: — Logout
+
+    private func performLogout() {
+        AuthManager.shared.setUserLoggedIn(false)
+        goToLoginScreen()
+    }
+
+    // MARK: — Delete Account
+
+    private func confirmDeleteAccount() {
+        let alert = UIAlertController(
+            title: "Удалить аккаунт?",
+            message: "Все данные будут безвозвратно удалены.",
+            preferredStyle: .alert
+        )
+        alert.view.tintColor = .color700
+        alert.addAction(.init(title: "Отмена", style: .cancel))
+        alert.addAction(.init(title: "Удалить", style: .default) { _ in
+            self.deleteAllUserData()
+            AuthManager.shared.deleteAccount { _ in
+                DispatchQueue.main.async {
+                    self.goToLoginScreen()
+                }
+            }
+        })
+        present(alert, animated: true)
+    }
+    
+    private func deleteAllUserData() {
+        let defaults = UserDefaults.standard
+
+        // 1) Удаляем все задачи
+        taskInteractor.fetchTasks().forEach { taskInteractor.deleteTask($0) }
+
+        // 2) Удаляем сохранённые учётные данные из Keychain
+        if let email = defaults.string(forKey: "userEmail") {
+            // удаляем пару (email ↔︎ password)
+            try? KeychainHelper.delete(account: email)
+        }
+        // 3) Удаляем текущую сессию
+        try? KeychainHelper.delete(account: "__session__")
+
+        // 4) Чистим всё из UserDefaults
+        [
+          "userName",
+          "userEmail",
+          "wakeUpTime",
+          "sleepTime",
+          "recommendationsEnabled",
+          "userPhoto"
+        ].forEach { defaults.removeObject(forKey: $0) }
+    }
+
+
+    private func goToLoginScreen() {
+        // 1) создаём логик-слой для Login
+        let loginPresenter = LoginPresenter()
+        let loginInteractor = LoginInteractor(presenter: loginPresenter)
+        // 2) инициализируем LoginViewController нужным init(interactor:presenter:)
+        let loginVC = LoginViewController(interactor: loginInteractor,
+                                          presenter: loginPresenter)
+        // 3) показываем его во весь экран
+        loginVC.modalPresentationStyle = .fullScreen
+        if let nav = navigationController {
+            nav.setViewControllers([loginVC], animated: true)
+        } else {
+            present(loginVC, animated: true)
+        }
+    }
+    
     // MARK: - Действия с временем
     
     @objc private func editWakeUpTime() {
@@ -439,7 +607,6 @@ class SettingsViewController: UIViewController, UITableViewDelegate {
             message: "\n\n\n\n\n\n\n\n\n\n\n",
             preferredStyle: .alert
         )
-        alertController.view.tintColor = UIColor.color700
         
         let datePicker = UIDatePicker(
             frame: CGRect(
@@ -476,6 +643,23 @@ class SettingsViewController: UIViewController, UITableViewDelegate {
         alertController.addAction(confirmAction)
         alertController.addAction(cancelAction)
         present(alertController, animated: true, completion: nil)
+    }
+    
+    // MARK: - Действие "Обратная связь"
+    @objc private func contactUsTapped() {
+        guard let url = URL(string: "https://t.me/your_elya") else { return }
+        if UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url, options: [:], completionHandler: nil)
+        } else {
+            // Вдруг URL не открывается — можно показать алерт
+            let alert = UIAlertController(
+                title: "Ошибка",
+                message: "Не удалось открыть Telegram.",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+        }
     }
     
     // MARK: - Создание UI-компонентов
@@ -526,6 +710,37 @@ class SettingsViewController: UIViewController, UITableViewDelegate {
     
     @objc private func toggleCheckbox(_ sender: UIButton) {
         sender.isSelected.toggle()
+        let defaults = UserDefaults.standard
+
+        if sender == pushCheckbox {
+            // 1) Сохраняем в UserDefaults
+            defaults.set(sender.isSelected, forKey: "pushNotificationsEnabled")
+
+            let center = UNUserNotificationCenter.current()
+            let service = TasksService()
+
+            if sender.isSelected {
+                // 2a) Если включили — сразу планируем push для всех существующих задач
+                let allTasks = service.getAllTasks()
+                allTasks.forEach { task in
+                    let newIDs = NotificationManager.shared.scheduleLocalNotifications(for: task)
+                    service.updateReminderIDs(for: task, with: newIDs)
+                }
+            } else {
+                // 2b) Если выключили — отменяем все запланированные локальные уведомления
+                center.removeAllPendingNotificationRequests()
+                // (Опционально) Обнуляем сохранённые IDs в Core Data, чтобы не было висячих
+                let allTasks = service.getAllTasks()
+                allTasks.forEach { task in
+                    service.updateReminderIDs(for: task, with: [])
+                }
+            }
+        }
+        else if sender == emailCheckbox {
+            defaults.set(sender.isSelected, forKey: "emailNotificationsEnabled")
+            // e-mail уведомления мы всё равно не отправим в BG-таске,
+            // потому что там стоит guard по этому флагу
+        }
     }
     
     private func createLine() -> UIView {
@@ -536,17 +751,20 @@ class SettingsViewController: UIViewController, UITableViewDelegate {
     }
     
     @objc private func segmentChanged(_ sender: UISegmentedControl) {
-        if sender.selectedSegmentIndex == 0 {
-            print("Нужны")
-        } else {
-            print("Не нужны")
-        }
+        let wantsRecs = sender.selectedSegmentIndex == 0
+        UserDefaults.standard.set(wantsRecs, forKey: "recommendationsEnabled")
+        print(wantsRecs ? "Рекомендации включены" : "Рекомендации отключены")
     }
 }
 
 // MARK: - Расширение для протокола SettingsView
 
 extension SettingsViewController: SettingsView {
+    func displayProfile(name: String, email: String) {
+        nameLabel.text = name
+        emailLabel.text = email
+    }
+    
     func displayWakeUpTime(_ time: String) {
         wakeUpLabel.text = time
     }
@@ -555,4 +773,3 @@ extension SettingsViewController: SettingsView {
         sleepLabel.text = time
     }
 }
-
