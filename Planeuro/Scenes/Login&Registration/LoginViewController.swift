@@ -1,5 +1,5 @@
 //
-//  RegistrationViewController.swift
+//  LoginViewController.swift
 //  Planeuro
 //
 //  Created by Эльвира Матвеенко on 16.01.2025.
@@ -9,7 +9,11 @@ import UIKit
 
 final class LoginViewController: UIViewController {
     private let interactor: LoginInteractorProtocol
+    private let presenter: LoginPresenter
     
+    private let emailField    = InputField(placeholder: "Введите e-mail")
+    private let passwordField = InputField(placeholder: "Введите пароль", isSecure: true)
+
     // MARK: - Константы
     
     private enum Constants {
@@ -44,9 +48,11 @@ final class LoginViewController: UIViewController {
         static let wordsPerLine: Int = 2
     }
 
-    init(interactor: LoginInteractorProtocol) {
+    init(interactor: LoginInteractorProtocol, presenter: LoginPresenter) {
         self.interactor = interactor
+        self.presenter  = presenter
         super.init(nibName: nil, bundle: nil)
+        self.presenter.view = self
     }
 
     required init?(coder: NSCoder) {
@@ -81,7 +87,21 @@ final class LoginViewController: UIViewController {
         view.layer.insertSublayer(gradientLayer, at: 0)
 
         // Создаем UI
-        let stackView = createStackView()
+        let loginBtn = createLoginButton()
+        loginBtn.addTarget(self, action: #selector(didTapLogin), for: .touchUpInside)
+
+        let forgotBtn = createForgotPasswordButton()
+        let stackView = UIStackView(arrangedSubviews: [
+            createTitleLabel(),
+            createDescriptionLabel(),
+            emailField,
+            passwordField,
+            loginBtn,
+            forgotBtn
+        ])
+        stackView.axis      = .vertical
+        stackView.alignment = .center
+        stackView.spacing   = Constants.stackViewSpacing
         view.addSubview(stackView)
 
         // Закрепляем stackView по центру с отступами
@@ -91,6 +111,7 @@ final class LoginViewController: UIViewController {
 
         // Добавляем комбинированную кнопку
         let combinedRegisterButton = createCombinedRegisterButton()
+        combinedRegisterButton.addTarget(self, action: #selector(didTapRegister), for: .touchUpInside)
         view.addSubview(combinedRegisterButton)
         combinedRegisterButton
             .pinBottom(to: view, Constants.combinedRegisterButtonBottomPadding)
@@ -112,6 +133,25 @@ final class LoginViewController: UIViewController {
     
     @objc private func dismissKeyboard() {
         view.endEditing(true) // Скрывает клавиатуру
+    }
+    
+    @objc private func didTapLogin() {
+        interactor.handleLogin(
+            email:    emailField.text ?? "",
+            password: passwordField.text ?? ""
+        )
+    }
+
+    @objc private func didTapRegister() {
+        let regPresenter  = RegistrationPresenter()
+        let regInteractor = RegistrationInteractor(presenter: regPresenter)
+        let regVC         = RegistrationViewController(interactor: regInteractor, presenter: regPresenter)
+        navigationController?.pushViewController(regVC, animated: true)
+    }
+    
+    func navigateToMain() {
+        let mainVC = MainViewController()
+        navigationController?.pushViewController(mainVC, animated: true)
     }
 
     // MARK: - Создание UI элементов
@@ -204,8 +244,6 @@ final class LoginViewController: UIViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setWidth(Constants.loginButtonWidth)
         button.setHeight(Constants.loginButtonHeight)
-        
-        button.addTarget(self, action: #selector(didTapLoginButton), for: .touchUpInside)
 
         return button
     }
@@ -280,15 +318,15 @@ final class LoginViewController: UIViewController {
         // Переход на экран RegistrationViewController
         let registrationPresenter = RegistrationPresenter()
         let registrationInteractor = RegistrationInteractor(presenter: registrationPresenter)
-        let registrationViewController = RegistrationViewController(interactor: registrationInteractor)
-        
-        // Переход через навигацию
-        navigationController?.pushViewController(registrationViewController, animated: true)
+        let registrationViewController = RegistrationViewController(interactor: registrationInteractor, presenter: registrationPresenter)
     }
-    
-    @objc private func didTapLoginButton() {
-            // Переход на экран MainViewController
-            let mainViewController = MainViewController()
-            navigationController?.pushViewController(mainViewController, animated: true)
-        }
+}
+
+private extension InputField {
+    var text: String? {
+        return self.subviews
+            .compactMap { $0 as? UITextField }
+            .first?
+            .text
+    }
 }

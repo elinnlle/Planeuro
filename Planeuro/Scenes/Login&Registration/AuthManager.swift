@@ -1,25 +1,28 @@
-//
-//  AuthManager.swift
-//  Planeuro
-//
-//  Created by Эльвира Матвеенко on 20.01.2025.
-//
+// File: AuthManager.swift
+// Planeuro
+// Created by Матвеенко Эльвира on 20.01.2025.
 
 import Foundation
 
 class AuthManager {
     static let shared = AuthManager()
-
     private init() {}
 
-    // Проверяет, авторизован ли пользователь
     func isUserLoggedIn() -> Bool {
-        // Для простоты пока используем UserDefaults.
-        return UserDefaults.standard.bool(forKey: "isLoggedIn")
+        (try? KeychainHelper.loadPassword(for: "__session__")) != nil
     }
 
-    // Сохраняет статус входа пользователя
     func setUserLoggedIn(_ loggedIn: Bool) {
-        UserDefaults.standard.set(loggedIn, forKey: "isLoggedIn")
+        if loggedIn {
+            try? KeychainHelper.save(password: "1", for: "__session__")
+        } else {
+            try? KeychainHelper.delete(account: "__session__")
+        }
+    }
+
+    // Полное удаление аккаунта
+    func deleteAccount(completion: @escaping (Bool) -> Void) {
+        setUserLoggedIn(false)
+        completion(true)
     }
 }

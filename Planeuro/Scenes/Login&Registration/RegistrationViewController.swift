@@ -9,6 +9,13 @@ import UIKit
 
 final class RegistrationViewController: UIViewController {
     private let interactor: RegistrationInteractorProtocol
+    private let presenter: RegistrationPresenter
+    
+    // MARK: — UI
+    private let nameField = InputField(placeholder: "Введите имя")
+    private let emailField = InputField(placeholder: "Введите e-mail")
+    private let passwordField = InputField(placeholder: "Введите пароль", isSecure: true)
+    private let confirmPasswordField = InputField(placeholder: "Повторите пароль", isSecure: true)
 
     // MARK: - Константы
     
@@ -39,11 +46,13 @@ final class RegistrationViewController: UIViewController {
         static let lineSpacing: CGFloat = 8.0
     }
 
-    // MARK: - Инициализация
-
-    init(interactor: RegistrationInteractorProtocol) {
+    // MARK: — Инициализация
+    init(interactor: RegistrationInteractorProtocol, presenter: RegistrationPresenter) {
         self.interactor = interactor
+        self.presenter  = presenter
         super.init(nibName: nil, bundle: nil)
+    
+        self.presenter.view = self
     }
 
     required init?(coder: NSCoder) {
@@ -78,7 +87,21 @@ final class RegistrationViewController: UIViewController {
         view.layer.insertSublayer(gradientLayer, at: 0)
 
         // Создаем UI
-        let stackView = createStackView()
+        let registerButton = createRegisterButton()
+        registerButton.addTarget(self, action: #selector(didTapSubmit), for: .touchUpInside)
+
+        let stackView = UIStackView(arrangedSubviews: [
+            createTitleLabel(),
+            nameField,
+            emailField,
+            passwordField,
+            confirmPasswordField,
+            registerButton
+        ])
+        stackView.axis      = .vertical
+        stackView.alignment = .center
+        stackView.spacing   = Constants.stackViewSpacing
+
         view.addSubview(stackView)
 
         // Закрепляем stackView по центру с отступами
@@ -88,6 +111,7 @@ final class RegistrationViewController: UIViewController {
 
         // Добавляем комбинированную кнопку
         let combinedRegisterButton = createCombinedRegisterButton()
+        combinedRegisterButton.addTarget(self, action: #selector(didTapAlreadyHaveAccount), for: .touchUpInside)
         view.addSubview(combinedRegisterButton)
         combinedRegisterButton.pinBottom(to: view, Constants.combinedRegisterButtonBottomPadding)
         combinedRegisterButton.pinCenterX(to: view)
@@ -107,6 +131,19 @@ final class RegistrationViewController: UIViewController {
     
     @objc private func dismissKeyboard() {
         view.endEditing(true) // Скрывает клавиатуру
+    }
+    
+    @objc private func didTapSubmit() {
+        interactor.handleRegistration(
+            name:               nameField.text ?? "",
+            email:              emailField.text ?? "",
+            password:           passwordField.text ?? "",
+            confirmPassword:    confirmPasswordField.text ?? ""
+        )
+    }
+
+    @objc private func didTapAlreadyHaveAccount() {
+        navigationController?.popViewController(animated: true)
     }
 
     // MARK: - Создание UI элементов
@@ -239,5 +276,15 @@ final class RegistrationViewController: UIViewController {
     @objc private func didTapRegisterButton() {
         // Возврат на предыдущий экран
         navigationController?.popViewController(animated: true)
+    }
+}
+
+// MARK: - Получаем текст из InputField
+private extension InputField {
+    var text: String? {
+        return self.subviews
+            .compactMap { $0 as? UITextField }
+            .first?
+            .text
     }
 }

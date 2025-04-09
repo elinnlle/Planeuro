@@ -5,11 +5,14 @@
 //  Created by Эльвира Матвеенко on 16.01.2025.
 //
 
-import UIKit
+// RegistrationInteractor.swift
+import Foundation
 
-// Протокол для обработки регистрации
 protocol RegistrationInteractorProtocol {
-    func handleRegistration(name: String, email: String, password: String, confirmPassword: String)
+    func handleRegistration(name: String,
+                            email: String,
+                            password: String,
+                            confirmPassword: String)
 }
 
 final class RegistrationInteractor: RegistrationInteractorProtocol {
@@ -19,35 +22,57 @@ final class RegistrationInteractor: RegistrationInteractorProtocol {
         self.presenter = presenter
     }
 
-    func handleRegistration(name: String, email: String, password: String, confirmPassword: String) {
-        // Проверяем, совпадают ли пароли
-        if password != confirmPassword {
+    func handleRegistration(name: String,
+                            email: String,
+                            password: String,
+                            confirmPassword: String)
+    {
+        // 1. Валидация
+        guard password == confirmPassword else {
             presenter.presentRegistrationFailure(error: "Пароли не совпадают")
             return
         }
-        
-        // Проверяем валидность email
-        if !isValidEmail(email) {
+        guard isValidEmail(email) else {
             presenter.presentRegistrationFailure(error: "Неверный формат e-mail")
             return
         }
-        
-        // Проверяем, что пароль достаточно длинный
-        if password.count < 6 {
-            presenter.presentRegistrationFailure(error: "Пароль должен быть не менее 6 символов")
+        guard password.count >= 6 else {
+            presenter.presentRegistrationFailure(error: "Пароль ≥ 6 символов")
             return
         }
 
-        // Успешная регистрация
-        
-        // После успешной регистрации вызываем презентер с успешным результатом
+        // 2. Сохраняем пароль в Keychain
+        do {
+            try KeychainHelper.save(password: password, for: email)
+        } catch KeychainError.duplicate {
+            presenter.presentRegistrationFailure(error: "Пользователь уже существует")
+            return
+        } catch {
+            presenter.presentRegistrationFailure(error: "Keychain error: \(error)")
+            return
+        }
+
+        // 3. Сохраняем профиль и сразу сообщаем об успехе
+        let defaults = UserDefaults.standard
+        defaults.set(name, forKey: "userName")
+        defaults.set(email, forKey: "userEmail")
         presenter.presentRegistrationSuccess()
+        
+        // 4. Асинхронно слать письмо (не блокируем UI)
+        Task {
+            let code = String(format: "%06d", Int.random(in: 0...999_999))
+            do {
+                try await MailService.shared.sendVerification(to: email, code: code)
+            } catch {
+                print("Mail send error: \(error)")
+            }
+        }
     }
 
-    // Функция для проверки валидности email
     private func isValidEmail(_ email: String) -> Bool {
-        let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
-        let emailPredicate = NSPredicate(format:"SELF MATCHES %@", emailRegEx)
-        return emailPredicate.evaluate(with: email)
+        let regex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
+        return NSPredicate(format: "SELF MATCHES %@", regex)
+            .evaluate(with: email)
     }
 }
+
